@@ -54,6 +54,23 @@ EOF
 
 makefile root:root 0644 "$tmp"/etc/motd <<EOF
 CloudI 1.7.2-rc2 LiveCD!
+
+    To run the integration tests use:
+        service cloudi stop
+        cp /etc/cloudi/cloudi_tests.conf /etc/cloudi/cloudi.conf
+        service cloudi start
+
+    To avoid extra RAM consumption the programming language packages
+    listed below are not installed by default:
+        go
+        openjdk8
+        ghc cabal
+        ocaml
+
+    The LiveCD filesystem only has enough space for one of the packages
+    listed above, with the installation as:
+        apk add openjdk8
+
 EOF
 
 mkdir -p "$tmp"/etc/conf.d/
@@ -434,101 +451,101 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     % an external service is an OS process connected
     % with a socket to the loopback device for each thread
     % the service below processes the Hexidecimal digits of PI (as a test)
-    {external,
-        % prefix specified for all subscriptions
-        "/tests/",
-        % executable file path
-        "/usr/lib/cloudi-1.7.1/tests/hexpi/hexpi_cxx",
-        % command line arguments for the executable
-        "",
-        % {Key, Value} pairs to specify environment variables
-        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"},
-         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"}],
-        % destination refresh controls how quickly service membership propogates
-        % Any process that sends to long-lived processes can use
-        % a 'lazy' prefix destination refresh (otherwise, if sending to
-        % short-lived provesses, use an 'immediate' prefix destination refresh).
-        % The 'lazy' prefix makes the service cache service name lookup data
-        % while the 'immediate' prefix uses a central local process to do 
-        % service name lookups.
-        % A 'closest' suffix destination refresh always prefers local
-        % processes rather than using remote processes
-        % (processes on other nodes).
-        % A 'furthest' suffix destination refresh always prefers remote
-        % processes rather than using local processes.
-        % A 'random' suffix load balances across all connected nodes.
-        % A 'local' suffix will only send to local processes, which will
-        % cause less request latency.
-        % A 'remote' suffix will always send to remote processes, which can
-        % provide more fault-tolerance guarantees.
-        % If the process doesn't send to any other processes, then 'none' can
-        % be used and the process will die if it attempts to send to another
-        % process (it is as if the destination deny list contains all services).
-        % (so the choices are:
-        %  'lazy_closest', 'immediate_closest',
-        %  'lazy_furthest', 'immediate_furthest',
-        %  'lazy_random', 'immediate_random',
-        %  'lazy_local', 'immediate_local',
-        %  'lazy_remote', 'immediate_remote',
-        %  'lazy_newest', 'immediate_newest',
-        %  'lazy_oldest', 'immediate_oldest',
-        %  'none')
-        none,
-        % protocol used for each socket
-        tcp,
-        % buffer size used for each socket
-        default, % bytes
-        % timeout for receiving an initialization message from a socket
-        20000,
-        % default timeout for asynchronous calls
-        5000,
-        % default timeout for synchronous calls
-        5000,
-        % destination deny list is used as an ACL (Access Control List) that
-        % prevents the process from sending to destinations with the specified
-        % prefixes.  if atoms are used within the list, they must exist as an
-        % associative entry in the acl configuration list.
-        % if the destination deny list is 'undefined' any destination is valid.
-        % a blocked request will just return a timeout
-        % (earlier than the timeout specified for the request).
-        undefined, % with 'none' destination refresh method, this is not checked
-        % destination allow list is used as an ACL (Access Control List) that
-        % allows the process to send to destinations with the specified
-        % prefixes.  if atoms are used within the list, they must exist as an
-        % associative entry in the acl configuration list.
-        % if the destination allow list is 'undefined' any destination is valid.
-        % a blocked request will just return a timeout
-        % (earlier than the timeout specified for the request).
-        undefined,
-        % specify how many processes should be created with this configuration
-        % (a float is a multiplier for the erlang VM scheduler count, i.e.,
-        %  the desired cpu count)
-        1,
-        % specify how many threads should be created with this configuration
-        % (i.e., how many sockets should be opened to each OS process)
-        % (a float is a multiplier for the erlang VM scheduler count, i.e.,
-        %  the desired cpu count)
-        1.5,
-        % If more than MaxR restarts occur within MaxT seconds,
-        % CloudI terminates the process
-        % MaxR (maximum restarts)
-        5,
-        % MaxT (maximum time)
-        300, % seconds
-        % options, e.g.:
-        % {queue_limit, 1024} % to limit the service's queue to a maximum
-        %                     % of 1024 requests (to prevent excessive memory
-        %                     % consumption while the service is busy,
-        %                     % handling a previous request)
-        % (see config_service_options in
-        %  lib/cloudi_core/src/cloudi_configuration.hrl)
-        [{request_timeout_adjustment, true},
-         {nice, 15}%,
-         %{cgroup,
-         % [{name, "cloudi/integration_tests/hexpi"},
-         %  {parameters,
-         %   [{"memory.limit_in_bytes", "64m"}]}]}
-        ]},
+    %{external,
+    %    % prefix specified for all subscriptions
+    %    "/tests/",
+    %    % executable file path
+    %    "/usr/lib/cloudi-1.7.1/tests/hexpi/hexpi_cxx",
+    %    % command line arguments for the executable
+    %    "",
+    %    % {Key, Value} pairs to specify environment variables
+    %    [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"},
+    %     {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"}],
+    %    % destination refresh controls how quickly service membership propogates
+    %    % Any process that sends to long-lived processes can use
+    %    % a 'lazy' prefix destination refresh (otherwise, if sending to
+    %    % short-lived provesses, use an 'immediate' prefix destination refresh).
+    %    % The 'lazy' prefix makes the service cache service name lookup data
+    %    % while the 'immediate' prefix uses a central local process to do 
+    %    % service name lookups.
+    %    % A 'closest' suffix destination refresh always prefers local
+    %    % processes rather than using remote processes
+    %    % (processes on other nodes).
+    %    % A 'furthest' suffix destination refresh always prefers remote
+    %    % processes rather than using local processes.
+    %    % A 'random' suffix load balances across all connected nodes.
+    %    % A 'local' suffix will only send to local processes, which will
+    %    % cause less request latency.
+    %    % A 'remote' suffix will always send to remote processes, which can
+    %    % provide more fault-tolerance guarantees.
+    %    % If the process doesn't send to any other processes, then 'none' can
+    %    % be used and the process will die if it attempts to send to another
+    %    % process (it is as if the destination deny list contains all services).
+    %    % (so the choices are:
+    %    %  'lazy_closest', 'immediate_closest',
+    %    %  'lazy_furthest', 'immediate_furthest',
+    %    %  'lazy_random', 'immediate_random',
+    %    %  'lazy_local', 'immediate_local',
+    %    %  'lazy_remote', 'immediate_remote',
+    %    %  'lazy_newest', 'immediate_newest',
+    %    %  'lazy_oldest', 'immediate_oldest',
+    %    %  'none')
+    %    none,
+    %    % protocol used for each socket
+    %    tcp,
+    %    % buffer size used for each socket
+    %    default, % bytes
+    %    % timeout for receiving an initialization message from a socket
+    %    20000,
+    %    % default timeout for asynchronous calls
+    %    5000,
+    %    % default timeout for synchronous calls
+    %    5000,
+    %    % destination deny list is used as an ACL (Access Control List) that
+    %    % prevents the process from sending to destinations with the specified
+    %    % prefixes.  if atoms are used within the list, they must exist as an
+    %    % associative entry in the acl configuration list.
+    %    % if the destination deny list is 'undefined' any destination is valid.
+    %    % a blocked request will just return a timeout
+    %    % (earlier than the timeout specified for the request).
+    %    undefined, % with 'none' destination refresh method, this is not checked
+    %    % destination allow list is used as an ACL (Access Control List) that
+    %    % allows the process to send to destinations with the specified
+    %    % prefixes.  if atoms are used within the list, they must exist as an
+    %    % associative entry in the acl configuration list.
+    %    % if the destination allow list is 'undefined' any destination is valid.
+    %    % a blocked request will just return a timeout
+    %    % (earlier than the timeout specified for the request).
+    %    undefined,
+    %    % specify how many processes should be created with this configuration
+    %    % (a float is a multiplier for the erlang VM scheduler count, i.e.,
+    %    %  the desired cpu count)
+    %    1,
+    %    % specify how many threads should be created with this configuration
+    %    % (i.e., how many sockets should be opened to each OS process)
+    %    % (a float is a multiplier for the erlang VM scheduler count, i.e.,
+    %    %  the desired cpu count)
+    %    1.5,
+    %    % If more than MaxR restarts occur within MaxT seconds,
+    %    % CloudI terminates the process
+    %    % MaxR (maximum restarts)
+    %    5,
+    %    % MaxT (maximum time)
+    %    300, % seconds
+    %    % options, e.g.:
+    %    % {queue_limit, 1024} % to limit the service's queue to a maximum
+    %    %                     % of 1024 requests (to prevent excessive memory
+    %    %                     % consumption while the service is busy,
+    %    %                     % handling a previous request)
+    %    % (see config_service_options in
+    %    %  lib/cloudi_core/src/cloudi_configuration.hrl)
+    %    [{request_timeout_adjustment, true},
+    %     {nice, 15}%,
+    %     %{cgroup,
+    %     % [{name, "cloudi/integration_tests/hexpi"},
+    %     %  {parameters,
+    %     %   [{"memory.limit_in_bytes", "64m"}]}]}
+    %    ]},
     % (using the proplist method of specifying the configuration data...
     %  it provides defaults automatically)
     [%{type, internal}, % gets inferred
@@ -627,16 +644,16 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
         [{nice, 15}]},
-    {external,
-        "/tests/http/",
-        "/usr/lib/jvm/java-1.8-openjdk/bin/java",
-        % enable assertions
-        "-ea:org.cloudi... "
-        "-jar /usr/lib/cloudi-1.7.1/tests/http/java/http.jar",
-        [],
-        none, default, default,
-        5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
-        [{nice, 15}]},
+    %{external,
+    %    "/tests/http/",
+    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    % enable assertions
+    %    "-ea:org.cloudi... "
+    %    "-jar /usr/lib/cloudi-1.7.1/tests/http/java/http.jar",
+    %    [],
+    %    none, default, default,
+    %    20000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
+    %    [{nice, 15}]},
     {external,
         "/tests/http/",
         "/usr/bin/ruby",
@@ -645,22 +662,22 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
         [{nice, 15}]},
-    [{prefix, "/tests/count/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/count/count_go"},
-     {dest_refresh, none},
-     {count_thread, 4},
-     {env, [{"GOMAXPROCS", "4"}]},
-     {options, [{nice, 10}]}],
-    [{prefix, "/tests/count/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/count/count_haskell"},
-     {dest_refresh, none},
-     {count_thread, 4},
-     {options, [{nice, 10}]}],
-    [{prefix, "/tests/count/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/count/count_ocaml"},
-     {dest_refresh, none},
-     {count_thread, 4},
-     {options, [{nice, 10}]}],
+    %[{prefix, "/tests/count/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/count/count_go"},
+    % {dest_refresh, none},
+    % {count_thread, 4},
+    % {env, [{"GOMAXPROCS", "4"}]},
+    % {options, [{nice, 10}]}],
+    %[{prefix, "/tests/count/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/count/count_haskell"},
+    % {dest_refresh, none},
+    % {count_thread, 4},
+    % {options, [{nice, 10}]}],
+    %[{prefix, "/tests/count/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/count/count_ocaml"},
+    % {dest_refresh, none},
+    % {count_thread, 4},
+    % {options, [{nice, 10}]}],
     {external,
         "/tests/count/",
         "/usr/lib/cloudi-1.7.1/tests/count/count_c", "",
@@ -669,16 +686,16 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 4, 1, 5, 300,
         [{nice, 10}]},
-    {external,
-        "/tests/count/",
-        "/usr/lib/jvm/java-1.8-openjdk/bin/java",
-        % enable assertions
-        "-ea:org.cloudi... "
-        "-jar /usr/lib/cloudi-1.7.1/tests/count/java/count.jar",
-        [],
-        none, default, default,
-        5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
-        [{nice, 10}]},
+    %{external,
+    %    "/tests/count/",
+    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    % enable assertions
+    %    "-ea:org.cloudi... "
+    %    "-jar /usr/lib/cloudi-1.7.1/tests/count/java/count.jar",
+    %    [],
+    %    none, default, default,
+    %    20000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
+    %    [{nice, 10}]},
     {external,
         "/tests/count/",
         "/usr/bin/node",
@@ -734,24 +751,24 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [],
         none, 5000, 5000, 5000, undefined, undefined, 4, 5, 300,
         []},
-    [{prefix, "/tests/http_req/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/http_req/http_req_go"},
-     {dest_refresh, none},
-     {options,
-      [{request_timeout_adjustment, true},
-       {nice, 10}]}],
-    [{prefix, "/tests/http_req/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/http_req/http_req_haskell"},
-     {dest_refresh, none},
-     {options,
-      [{request_timeout_adjustment, true},
-       {nice, 10}]}],
-    [{prefix, "/tests/http_req/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/http_req/http_req_ocaml"},
-     {dest_refresh, none},
-     {options,
-      [{request_timeout_adjustment, true},
-       {nice, 10}]}],
+    %[{prefix, "/tests/http_req/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/http_req/http_req_go"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{request_timeout_adjustment, true},
+    %   {nice, 10}]}],
+    %[{prefix, "/tests/http_req/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/http_req/http_req_haskell"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{request_timeout_adjustment, true},
+    %   {nice, 10}]}],
+    %[{prefix, "/tests/http_req/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/http_req/http_req_ocaml"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{request_timeout_adjustment, true},
+    %   {nice, 10}]}],
     {external,
         "/tests/http_req/",
         "/usr/lib/cloudi-1.7.1/tests/http_req/http_req_c", "",
@@ -761,17 +778,17 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{request_timeout_adjustment, true},
          {nice, 10}]},
-    {external,
-        "/tests/http_req/",
-        "/usr/lib/jvm/java-1.8-openjdk/bin/java",
-        % enable assertions
-        "-ea:org.cloudi... "
-        "-jar /usr/lib/cloudi-1.7.1/tests/http_req/java/http_req.jar",
-        [],
-        none, default, default,
-        5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {nice, 10}]},
+    %{external,
+    %    "/tests/http_req/",
+    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    % enable assertions
+    %    "-ea:org.cloudi... "
+    %    "-jar /usr/lib/cloudi-1.7.1/tests/http_req/java/http_req.jar",
+    %    [],
+    %    none, default, default,
+    %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {nice, 10}]},
     {external,
         "/tests/http_req/",
         "/usr/bin/node",
@@ -865,42 +882,42 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
            {rate_request_min, 0.9},
            {count_max, 2.0},
            {count_min, 0.25}]}]},
-    [{prefix, "/tests/null/response/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_go"},
-     {dest_refresh, none},
-     {options,
-      [{response_timeout_immediate_max, limit_min},
-       {nice, 10}]}],
-    [{prefix, "/tests/null/timeout/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_go"},
-     {dest_refresh, none},
-     {options,
-      [{response_timeout_immediate_max, limit_max},
-       {nice, 10}]}],
-    [{prefix, "/tests/null/response/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_haskell"},
-     {dest_refresh, none},
-     {options,
-      [{response_timeout_immediate_max, limit_min},
-       {nice, 10}]}],
-    [{prefix, "/tests/null/timeout/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_haskell"},
-     {dest_refresh, none},
-     {options,
-      [{response_timeout_immediate_max, limit_max},
-       {nice, 10}]}],
-    [{prefix, "/tests/null/response/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_ocaml"},
-     {dest_refresh, none},
-     {options,
-      [{response_timeout_immediate_max, limit_min},
-       {nice, 10}]}],
-    [{prefix, "/tests/null/timeout/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_ocaml"},
-     {dest_refresh, none},
-     {options,
-      [{response_timeout_immediate_max, limit_max},
-       {nice, 10}]}],
+    %[{prefix, "/tests/null/response/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_go"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{response_timeout_immediate_max, limit_min},
+    %   {nice, 10}]}],
+    %[{prefix, "/tests/null/timeout/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_go"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{response_timeout_immediate_max, limit_max},
+    %   {nice, 10}]}],
+    %[{prefix, "/tests/null/response/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_haskell"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{response_timeout_immediate_max, limit_min},
+    %   {nice, 10}]}],
+    %[{prefix, "/tests/null/timeout/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_haskell"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{response_timeout_immediate_max, limit_max},
+    %   {nice, 10}]}],
+    %[{prefix, "/tests/null/response/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_ocaml"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{response_timeout_immediate_max, limit_min},
+    %   {nice, 10}]}],
+    %[{prefix, "/tests/null/timeout/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/null/null_ocaml"},
+    % {dest_refresh, none},
+    % {options,
+    %  [{response_timeout_immediate_max, limit_max},
+    %   {nice, 10}]}],
     {external,
         "/tests/null/response/",
         "/usr/lib/cloudi-1.7.1/tests/null/null_c", "",
@@ -910,17 +927,17 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_min},
          {nice, 10}]},
-    {external,
-        "/tests/null/response/",
-        "/usr/lib/jvm/java-1.8-openjdk/bin/java",
-        % enable assertions
-        "-ea:org.cloudi... "
-        "-jar /usr/lib/cloudi-1.7.1/tests/null/java/null_.jar",
-        [],
-        none, default, default,
-        5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
-        [{response_timeout_immediate_max, limit_min},
-         {nice, 10}]},
+    %{external,
+    %    "/tests/null/response/",
+    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    % enable assertions
+    %    "-ea:org.cloudi... "
+    %    "-jar /usr/lib/cloudi-1.7.1/tests/null/java/null_.jar",
+    %    [],
+    %    none, default, default,
+    %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
+    %    [{response_timeout_immediate_max, limit_min},
+    %     {nice, 10}]},
     {external,
         "/tests/null/response/",
         "/usr/bin/node",
@@ -991,17 +1008,17 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_max},
          {nice, 10}]},
-    {external,
-        "/tests/null/timeout/",
-        "/usr/lib/jvm/java-1.8-openjdk/bin/java",
-        % enable assertions
-        "-ea:org.cloudi... "
-        "-jar /usr/lib/cloudi-1.7.1/tests/null/java/null_.jar",
-        [],
-        none, default, default,
-        5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
-        [{response_timeout_immediate_max, limit_max},
-         {nice, 10}]},
+    %{external,
+    %    "/tests/null/timeout/",
+    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    % enable assertions
+    %    "-ea:org.cloudi... "
+    %    "-jar /usr/lib/cloudi-1.7.1/tests/null/java/null_.jar",
+    %    [],
+    %    none, default, default,
+    %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
+    %    [{response_timeout_immediate_max, limit_max},
+    %     {nice, 10}]},
     {external,
         "/tests/null/timeout/",
         "/usr/bin/node",
@@ -1071,7 +1088,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
             [{mode, round_robin},
              {service_names,
               ["http_req/c.xml/get",
-               "http_req/java.xml/get",
+    %           "http_req/java.xml/get",
                "http_req/perl.xml/get",
                "http_req/php.xml/get",
                "http_req/python.xml/get",
@@ -1081,7 +1098,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
             [{mode, round_robin},
              {service_names,
               ["null/response/c/get",
-               "null/response/java/get",
+    %           "null/response/java/get",
                "null/response/perl/get",
                "null/response/php/get",
                "null/response/python/get",
@@ -1091,7 +1108,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
             [{mode, round_robin},
              {service_names,
               ["null/timeout/c/get",
-               "null/timeout/java/get",
+    %           "null/timeout/java/get",
                "null/timeout/perl/get",
                "null/timeout/php/get",
                "null/timeout/python/get",
@@ -1120,17 +1137,17 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         % give this service instance a 50% of failure on a service request
         [{monkey_chaos, [{probability_request, 0.5}]},
          {nice, 15}]},
-    {internal,
-        "/tests/http_req/",
-        cloudi_service_filesystem,
-        [{directory, "/usr/lib/cloudi-1.7.1/tests/http_req/public_html/"},
-         {write_append, ["/tests/http_req/hexpi.txt"]},
-         {refresh, 5}, % seconds
-         {cache, 300}, % seconds
-         {notify_one, [{"/tests/http_req/index.html/get", "/tests/echo/put"}]}
-         ],
-        immediate_closest,
-        5000, 5000, 5000, undefined, undefined, 1, 5, 300, []},
+    %{internal,
+    %    "/tests/http_req/",
+    %    cloudi_service_filesystem,
+    %    [{directory, "/usr/lib/cloudi-1.7.1/tests/http_req/public_html/"},
+    %     {write_append, ["/tests/http_req/hexpi.txt"]},
+    %     {refresh, 5}, % seconds
+    %     {cache, 300}, % seconds
+    %     {notify_one, [{"/tests/http_req/index.html/get", "/tests/echo/put"}]}
+    %     ],
+    %    immediate_closest,
+    %    5000, 5000, 5000, undefined, undefined, 1, 5, 300, []},
     %{internal,
     %    "/db/pgsql/",
     %    cloudi_service_db_pgsql,
@@ -1142,14 +1159,14 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    none,
     %    5000, 5000, 5000, undefined, undefined, 1, 5, 300, []},
     % the service below manages the Hexidecimal PI test
-    [{prefix, "/tests/"},
-     {module, cloudi_service_map_reduce},
-     {args, [{map_reduce, cloudi_service_hexpi}, % map-reduce module
-             {map_reduce_args, [1, 65536]},  % index start, index end
-             {concurrency, 1.5}]},
-     {timeout_init, 20000},
-     {dest_list_deny, [api]},
-     {options, [{request_timeout_adjustment, true}]}],
+    %[{prefix, "/tests/"},
+    % {module, cloudi_service_map_reduce},
+    % {args, [{map_reduce, cloudi_service_hexpi}, % map-reduce module
+    %         {map_reduce_args, [1, 65536]},  % index start, index end
+    %         {concurrency, 1.5}]},
+    % {timeout_init, 20000},
+    % {dest_list_deny, [api]},
+    % {options, [{request_timeout_adjustment, true}]}],
     {external,
         "/tests/websockets/",
         "/usr/bin/python3",
@@ -1175,198 +1192,198 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
     %    [{nice, 15}]},
     % msg_size tests can not use the udp protocol with the default buffer size
-    [{prefix, "/tests/msg_size/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_go"},
-     {options,
-      [{request_timeout_adjustment, true},
-       {scope, cloudi_service_msg_size},
-       {nice, 15}]}],
-    [{prefix, "/tests/msg_size/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_haskell"},
-     {options,
-      [{request_timeout_adjustment, true},
-       {scope, cloudi_service_msg_size},
-       {nice, 15}]}],
-    [{prefix, "/tests/msg_size/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_ocaml"},
-     {options,
-      [{request_timeout_adjustment, true},
-       {scope, cloudi_service_msg_size},
-       {nice, 15}]}],
-    {internal,
-        "/tests/msg_size/",
-        cloudi_service_msg_size,
-        [],
-        immediate_closest,
-        5000, 5000, 5000, [api], undefined, 2, 5, 300,
-        [{request_timeout_adjustment, true},
-         {duo_mode, true},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {restart_delay, []},
-         {scope, cloudi_service_msg_size}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_cxx",
-        "",
-        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"},
-         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"}],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 2, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/lib/jvm/java-1.8-openjdk/bin/java",
-        % enable assertions
-        "-ea:org.cloudi... "
-        "-jar /usr/lib/cloudi-1.7.1/tests/msg_size/java/msg_size.jar",
-        [],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/bin/node",
-        "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.js",
-        [{"NODE_PATH", "/usr/lib/cloudi-1.7.1/api/javascript/"}],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/bin/perl",
-        "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.pl",
-        [{"PERL5LIB", "/usr/lib/cloudi-1.7.1/api/perl/"}],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/bin/php",
-        "-d include_path='/usr/lib/cloudi-1.7.1/api/php/' "
-        "-f /usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.php",
-        [],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/bin/python3",
-        "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-1.7.1/api/python/"}],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/bin/python3",
-        "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_c.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-1.7.1/api/python/"}],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    {external,
-        "/tests/msg_size/",
-        "/usr/bin/ruby",
-        "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.rb",
-        [{"RUBYLIB", "/usr/lib/cloudi-1.7.1/api/ruby/"}],
-        immediate_closest, default, default,
-        5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-        [{request_timeout_adjustment, true},
-         {aspects_init_after,
-          [{cloudi_service_msg_size, aspect_init}]},
-         {aspects_request_before,
-          [{cloudi_service_msg_size, aspect_request}]},
-         {aspects_terminate_before,
-          [{cloudi_service_msg_size, aspect_terminate}]},
-         {scope, cloudi_service_msg_size},
-         {nice, 15}]},
-    [{prefix, "/tests/messaging/go/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/messaging/messaging_go"},
-     {dest_refresh, immediate_local},
-     {timeout_async, 10000},
-     {timeout_sync, 10000},
-     {count_thread, 4},
-     {env, [{"GOMAXPROCS", "4"}]},
-     {options,
-      [{scope, cloudi_service_messaging_go},
-       {nice, 15}]}],
-    [{prefix, "/tests/messaging/haskell/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/messaging/messaging_haskell"},
-     {dest_refresh, immediate_local},
-     {timeout_async, 10000},
-     {timeout_sync, 10000},
-     {count_thread, 4},
-     {options,
-      [{scope, cloudi_service_messaging_haskell},
-       {nice, 15}]}],
-    [{prefix, "/tests/messaging/ocaml/"},
-     {file_path, "/usr/lib/cloudi-1.7.1/tests/messaging/messaging_ocaml"},
-     {dest_refresh, immediate_local},
-     {timeout_async, 10000},
-     {timeout_sync, 10000},
-     {count_thread, 4},
-     {options,
-      [{scope, cloudi_service_messaging_ocaml},
-       {nice, 15}]}],
+    %[{prefix, "/tests/msg_size/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_go"},
+    % {options,
+    %  [{request_timeout_adjustment, true},
+    %   {scope, cloudi_service_msg_size},
+    %   {nice, 15}]}],
+    %[{prefix, "/tests/msg_size/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_haskell"},
+    % {options,
+    %  [{request_timeout_adjustment, true},
+    %   {scope, cloudi_service_msg_size},
+    %   {nice, 15}]}],
+    %[{prefix, "/tests/msg_size/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_ocaml"},
+    % {options,
+    %  [{request_timeout_adjustment, true},
+    %   {scope, cloudi_service_msg_size},
+    %   {nice, 15}]}],
+    %{internal,
+    %    "/tests/msg_size/",
+    %    cloudi_service_msg_size,
+    %    [],
+    %    immediate_closest,
+    %    5000, 5000, 5000, [api], undefined, 2, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {duo_mode, true},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {restart_delay, []},
+    %     {scope, cloudi_service_msg_size}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_cxx",
+    %    "",
+    %    [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"},
+    %     {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-1.7.1/api/c/"}],
+    %    immediate_closest, default, default,
+    %    5000, 5000, 5000, [api], undefined, 2, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    % enable assertions
+    %    "-ea:org.cloudi... "
+    %    "-jar /usr/lib/cloudi-1.7.1/tests/msg_size/java/msg_size.jar",
+    %    [],
+    %    immediate_closest, default, default,
+    %    20000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/bin/node",
+    %    "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.js",
+    %    [{"NODE_PATH", "/usr/lib/cloudi-1.7.1/api/javascript/"}],
+    %    immediate_closest, default, default,
+    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/bin/perl",
+    %    "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.pl",
+    %    [{"PERL5LIB", "/usr/lib/cloudi-1.7.1/api/perl/"}],
+    %    immediate_closest, default, default,
+    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/bin/php",
+    %    "-d include_path='/usr/lib/cloudi-1.7.1/api/php/' "
+    %    "-f /usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.php",
+    %    [],
+    %    immediate_closest, default, default,
+    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/bin/python3",
+    %    "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.py",
+    %    [{"PYTHONPATH", "/usr/lib/cloudi-1.7.1/api/python/"}],
+    %    immediate_closest, default, default,
+    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/bin/python3",
+    %    "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size_c.py",
+    %    [{"PYTHONPATH", "/usr/lib/cloudi-1.7.1/api/python/"}],
+    %    immediate_closest, default, default,
+    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %{external,
+    %    "/tests/msg_size/",
+    %    "/usr/bin/ruby",
+    %    "/usr/lib/cloudi-1.7.1/tests/msg_size/msg_size.rb",
+    %    [{"RUBYLIB", "/usr/lib/cloudi-1.7.1/api/ruby/"}],
+    %    immediate_closest, default, default,
+    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    [{request_timeout_adjustment, true},
+    %     {aspects_init_after,
+    %      [{cloudi_service_msg_size, aspect_init}]},
+    %     {aspects_request_before,
+    %      [{cloudi_service_msg_size, aspect_request}]},
+    %     {aspects_terminate_before,
+    %      [{cloudi_service_msg_size, aspect_terminate}]},
+    %     {scope, cloudi_service_msg_size},
+    %     {nice, 15}]},
+    %[{prefix, "/tests/messaging/go/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/messaging/messaging_go"},
+    % {dest_refresh, immediate_local},
+    % {timeout_async, 10000},
+    % {timeout_sync, 10000},
+    % {count_thread, 4},
+    % {env, [{"GOMAXPROCS", "4"}]},
+    % {options,
+    %  [{scope, cloudi_service_messaging_go},
+    %   {nice, 15}]}],
+    %[{prefix, "/tests/messaging/haskell/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/messaging/messaging_haskell"},
+    % {dest_refresh, immediate_local},
+    % {timeout_async, 10000},
+    % {timeout_sync, 10000},
+    % {count_thread, 4},
+    % {options,
+    %  [{scope, cloudi_service_messaging_haskell},
+    %   {nice, 15}]}],
+    %[{prefix, "/tests/messaging/ocaml/"},
+    % {file_path, "/usr/lib/cloudi-1.7.1/tests/messaging/messaging_ocaml"},
+    % {dest_refresh, immediate_local},
+    % {timeout_async, 10000},
+    % {timeout_sync, 10000},
+    % {count_thread, 4},
+    % {options,
+    %  [{scope, cloudi_service_messaging_ocaml},
+    %   {nice, 15}]}],
     {external,
         "/tests/messaging/perl/",
         "/usr/bin/perl",
@@ -1432,19 +1449,19 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
         [{scope, cloudi_service_messaging_cxx},
          {nice, 15}]},
-    {external,
-        "/tests/messaging/java/",
-        "/usr/lib/jvm/java-1.8-openjdk/bin/java",
-        % based on http://www.infoq.com/articles/benchmarking-jvm
-        "-Xbatch -server -Xmx1G -Xms1G "
-        % enable assertions
-        "-ea:org.cloudi... "
-        "-jar /usr/lib/cloudi-1.7.1/tests/messaging/java/messaging.jar",
-        [],
-        immediate_local, default, default,
-        5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
-        [{scope, cloudi_service_messaging_java},
-         {nice, 15}]},
+    %{external,
+    %    "/tests/messaging/java/",
+    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    % based on http://www.infoq.com/articles/benchmarking-jvm
+    %    "-Xbatch -server -Xmx1G -Xms1G "
+    %    % enable assertions
+    %    "-ea:org.cloudi... "
+    %    "-jar /usr/lib/cloudi-1.7.1/tests/messaging/java/messaging.jar",
+    %    [],
+    %    immediate_local, default, default,
+    %    20000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
+    %    [{scope, cloudi_service_messaging_java},
+    %     {nice, 15}]},
     {internal,
         "/tests/messaging/erlang/variation0/",
         cloudi_service_messaging_sequence1,

@@ -4,7 +4,7 @@ profile_cloudi() {
 	title="CloudI LiveCD"
 	desc="CloudI AlpineLinux LiveCD"
 	hostname="cloudi"
-	rootfs_size="765460480" # 730 MB
+	rootfs_size="765460480" # 382 MB (used) + 348 MB (free) = 730 MB
 	kernel_cmdline="nomodeset console=tty0 console=ttyS0,19200 rootflags=\"size=$rootfs_size\""
 	syslinux_serial="0 19200"
 	kernel_addons=""
