@@ -1,11 +1,16 @@
 CloudI LiveCD Downloads
 =======================
 
+* Alpine Linux 3.7.0 (kernel 4.14.24-0-vanilla) CloudI [1.7.3](https://github.com/CloudI/CloudI/tree/v1.7.3)
+  * 2GB RAM required (consumes less than 768MB (1024MB with integration tests) RAM during runtime (730MB RAM consumed by the filesystem) with 348MB filesystem storage available)
+    * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-edge-x86_64-cloudi-1.7.3.iso)
+    (SHA256 `a8dfe212f3d07a4a13a7803758eba6757adf8e3537dd2af6334f4c353aa4b099`)
+
 * Alpine Linux 3.6.2 (kernel 4.9.51-0-hardened) CloudI [1.7.2](https://github.com/CloudI/CloudI/tree/v1.7.2)
   * 2GB RAM required (consumes less than 768MB (1024MB with integration tests) RAM during runtime (730MB RAM consumed by the filesystem) with 348MB filesystem storage available)
-    * [x86_64 (64bit Intel/AMD)](http://sourceforge.net/projects/cloudi/files/1.7.2/alpine-edge-x86_64-cloudi-1.7.2.iso/download)
+    * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-edge-x86_64-cloudi-1.7.2.iso)
     (SHA256 `0abacbbf4f6f8f80c25ff759155cc2f7ed4480420d49ed86ddd324c78dd2c34f`)
-    * [x86 (32bit Intel/AMD)](http://sourceforge.net/projects/cloudi/files/1.7.2/alpine-edge-x86-cloudi-1.7.2.iso/download)
+    * [x86 (32bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-edge-x86-cloudi-1.7.2.iso)
     (SHA256 `74b514b18ca2ce2e8922e29389dc5c882bacd7a2ecad6012738b416956f4dcda`)
 
 * Alpine Linux 3.6.2 (kernel 4.9.44-0-hardened) CloudI [1.7.2-rc2](https://github.com/CloudI/CloudI/tree/v1.7.2-rc2)

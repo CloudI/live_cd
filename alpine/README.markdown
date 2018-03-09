@@ -8,7 +8,7 @@ Setup the Alpine Linux [installation](https://www.alpinelinux.org/downloads/) (b
 
 0. `apk update`
 1. `apk add alpine-sdk build-base apk-tools alpine-conf busybox fakeroot syslinux xorriso`
-   (if UEFI, add "`mtools dosfstools grub-efi`")
+   (if UEFI (`x86_64` requires this now), add "`mtools dosfstools grub-efi`")
 2. `adduser build -G abuild`
 3. `passwd build`
 4. `addgroup sudo` (modify `/etc/sudoers` to allow sudo group)
