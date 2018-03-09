@@ -14,7 +14,7 @@ profile_cloudi() {
 	apks="$apks go nodejs openjdk8 perl php7 python3 ruby"
 	# add programming languages supported on some architectures
 	case "$ARCH" in
-	x86_64 | armhf)
+	x86_64)
 		apks="$apks ghc cabal"
 		;;
 	esac
