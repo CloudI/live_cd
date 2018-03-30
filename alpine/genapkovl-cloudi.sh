@@ -1632,7 +1632,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
 %{nodes, ['cloudi@host1', 'cloudi@host2']}.
 % is equivalent to:
 %{nodes, [{nodes, ['cloudi@host1', 'cloudi@host2']}]}.
-% (see http://cloudi.org/api.html#2_nodes_set for all the options)
+% (see https://cloudi.org/api.html#2_nodes_set for all the options)
 {logging, [
     %{file, "path/to/logfile"},
     %{level, trace}, % levels: off, fatal, error, warn, info, debug, trace
