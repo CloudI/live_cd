@@ -1,21 +1,21 @@
-CloudI LiveCD Downloads
-=======================
+[CloudI](https://cloudi.org) LiveCD Downloads
+=============================================
 
-* Alpine Linux 3.9.0 (kernel 4.19.18-0-vanilla) CloudI [1.7.5](https://github.com/CloudI/CloudI/tree/v1.7.5)
+* Alpine Linux 3.9.0 (kernel 4.19.18-0-vanilla) CloudI [1.7.5](https://osdn.net/dl/cloudi/cloudi-1.7.5.tar.gz)
   * 2GB RAM required (consumes less than 768MB (1024MB with integration tests) RAM during runtime (730MB RAM consumed by the filesystem) with 348MB filesystem storage available)
-    * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-.iso)
-    (SHA256 ``)
-    * [x86 (32bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-.iso)
-    (SHA256 ``)
+    * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-3.9.0-x86_64-cloudi-1.7.5.iso)
+    (SHA256 `b6e6b716c531192a3f7e209ab0130ef15210130bdc7a74d167c5330e689fd298`)
+    * [x86 (32bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-3.9.0-x86-cloudi-1.7.5.iso)
+    (SHA256 `1a984c0e880ff99eadc10ddd0502bd884a5db54c1b4d76a70962d5d54bf5c869`)
 
-* Alpine Linux 3.7.0 (kernel 4.14.24-0-vanilla) CloudI [1.7.3](https://github.com/CloudI/CloudI/tree/v1.7.3)
+* Alpine Linux 3.7.0 (kernel 4.14.24-0-vanilla) CloudI [1.7.3](https://osdn.net/dl/cloudi/cloudi-1.7.3.tar.gz)
   * 2GB RAM required (consumes less than 768MB (1024MB with integration tests) RAM during runtime (730MB RAM consumed by the filesystem) with 348MB filesystem storage available)
     * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-edge-x86_64-cloudi-1.7.3.iso)
     (SHA256 `a8dfe212f3d07a4a13a7803758eba6757adf8e3537dd2af6334f4c353aa4b099`)
     * [x86 (32bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-edge-x86-cloudi-1.7.3.iso)
     (SHA256 `092b57ea988034f17cb332215407119e9f29454355a51e3882377c264c39964d`)
 
-* Alpine Linux 3.6.2 (kernel 4.9.51-0-hardened) CloudI [1.7.2](https://github.com/CloudI/CloudI/tree/v1.7.2)
+* Alpine Linux 3.6.2 (kernel 4.9.51-0-hardened) CloudI [1.7.2](https://osdn.net/dl/cloudi/cloudi-1.7.2.tar.gz)
   * 2GB RAM required (consumes less than 768MB (1024MB with integration tests) RAM during runtime (730MB RAM consumed by the filesystem) with 348MB filesystem storage available)
     * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-edge-x86_64-cloudi-1.7.2.iso)
     (SHA256 `0abacbbf4f6f8f80c25ff759155cc2f7ed4480420d49ed86ddd324c78dd2c34f`)
