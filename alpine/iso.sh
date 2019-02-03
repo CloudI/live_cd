@@ -7,8 +7,11 @@ if [ -z "$ARCH" -o -z "$PROFILE" ]; then
     exit 1
 fi
 
-URL="http://dl-cdn.alpinelinux.org/alpine/edge"
-#URL="http://nl.alpinelinux.org/alpine/edge"
+TAG="v3.9"
+#TAG="edge"
 
-sh ~/aports/scripts/mkimage.sh --outdir ~/iso --repository "${URL}/main" --extra-repository "${URL}/community" --extra-repository "${URL}/testing" --tag edge --arch "$ARCH" --profile "$PROFILE"
+URL="http://dl-cdn.alpinelinux.org/alpine/${TAG}"
+#URL="http://nl.alpinelinux.org/alpine/${TAG}"
+
+sh ~/aports/scripts/mkimage.sh --outdir ~/iso --repository "${URL}/main" --extra-repository "${URL}/community" --tag "${TAG}" --arch "${ARCH}" --profile "${PROFILE}"
 

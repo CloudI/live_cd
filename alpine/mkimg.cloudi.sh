@@ -19,7 +19,7 @@ profile_cloudi() {
 		;;
 	esac
 	case "$ARCH" in
-	x86 | armhf | s390x)
+	x86 | armhf | armv7 | s390x)
 		;;
 	*)
 		apks="$apks ocaml"
