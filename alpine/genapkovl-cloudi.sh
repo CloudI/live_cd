@@ -1267,30 +1267,6 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         immediate_local, default, default,
         5000, 5000, 5000, [api], undefined, 1, 4, 5, 300,
         [{nice, 15}]},
-    % openrc-run ensures no USER environment variable is set
-    %{external,
-    %    "/tests/environment/",
-    %    "/usr/bin/python3",
-    %    "/usr/lib/cloudi-1.8.0/tests/environment/environment.py "
-    %    "À 'À' \"À\" `À`",
-    %    [{"PYTHONPATH", "/usr/lib/cloudi-1.8.0/api/python/"},
-    %     {"LANG", "en_US.UTF-8"},
-    %     {"USER", "\${USER}"},
-    %     {"\$USER", "user"},
-    %     {"\${USER}_\$USER", "user_user"},
-    %     {"\$USER\${USER}", "useruser"},
-    %     {"\${USER}123\$USER", "user123user"},
-    %     {"USER_D", "user_\\\\\$"}, % \\\\ is needed to escape \$
-    %     {"USER_", "user_\$"}, % "\$" is ignored
-    %     {"\${INVALID1=\$USER'check1'\${INVALID2", "user'check1'"},
-    %     {"\$INVALID1=\$USER\"check2\"\$INVALID2}", "user\"check2\""},
-    %     {"\$USER/\$USER \$USER`\$USER", "user/user user`user"},
-    %     {"À_UNICODE", "true"},
-    %     {"UNICODE_À", "true"},
-    %     {"UNICODE_CHARACTER", "À"}],
-    %    immediate_local, default, default,
-    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
-    %    [{nice, 15}]},
     % msg_size tests can not use the udp protocol with the default buffer size
     %[{prefix, "/tests/msg_size/"},
     % {file_path, "/usr/lib/cloudi-1.8.0/tests/msg_size/msg_size_go"},
