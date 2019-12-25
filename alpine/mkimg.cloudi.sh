@@ -4,10 +4,14 @@ profile_cloudi() {
 	title="CloudI LiveCD"
 	desc="CloudI AlpineLinux LiveCD"
 	hostname="cloudi"
-	rootfs_size="765460480" # 382 MB (used) + 348 MB (free) = 730 MB
-	kernel_cmdline="nomodeset console=tty0 console=ttyS0,19200 rootflags=\"size=$rootfs_size\""
+	rootfs_size="765460480" # 329.2 MB (used) + 400.8 MB (free) = 730 MB
+	kernel_cmdline="nomodeset console=tty0 console=ttyS0,19200 rootflags=size=$rootfs_size"
+	initfs_cmdline="modules=loop,squashfs,sd-mod,usb-storage"
 	syslinux_serial="0 19200"
 	kernel_addons=""
+	# debug information
+	#kernel_cmdline="$kernel_cmdline debug"
+	#initfs_cmdline="$initfs_cmdline debug_init=yes"
 	apkovl="genapkovl-cloudi.sh"
 	apks="$apks cloudi"
 	# add programming languages supported on all architecturs
@@ -16,13 +20,12 @@ profile_cloudi() {
 	case "$ARCH" in
 	x86_64)
 		apks="$apks ghc cabal"
+		apks="$apks ocaml"
 		;;
-	esac
-	case "$ARCH" in
-	x86 | armhf | armv7)
+	x86)
 		;;
 	*)
-		apks="$apks ocaml"
+		exit 1
 		;;
 	esac
 }

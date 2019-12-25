@@ -58,6 +58,7 @@ CloudI 1.8.0 LiveCD!
     To run the integration tests use:
         service cloudi stop
         cp /etc/cloudi/cloudi_tests.conf /etc/cloudi/cloudi.conf
+        cp /etc/cloudi/cloudi_tests.args /etc/cloudi/cloudi.args
         service cloudi start
 
     To avoid extra RAM consumption the programming language packages
@@ -414,6 +415,17 @@ net.core.somaxconn = 65535
 EOF
 
 mkdir -p "$tmp"/etc/cloudi/
+makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.args <<EOF
+# Erlang/OTP arguments specific to node cloudi
+
+# Integration Tests code paths for the default configuration
+-pz /usr/lib/cloudi-1.8.0/tests/count/erlang/ebin/
+-pz /usr/lib/cloudi-1.8.0/tests/hexpi/erlang/ebin/
+-pz /usr/lib/cloudi-1.8.0/tests/http_req/erlang/ebin/
+-pz /usr/lib/cloudi-1.8.0/tests/msg_size/erlang/ebin/
+-pz /usr/lib/cloudi-1.8.0/tests/messaging/erlang/ebin/
+-pz /usr/lib/cloudi-1.8.0/tests/null/erlang/ebin/
+EOF
 makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
 %-*-Mode:erlang;coding:utf-8;tab-width:4;c-basic-offset:4;indent-tabs-mode:()-*-
 % ex: set ft=erlang fenc=utf-8 sts=4 ts=4 sw=4 et nomod:
@@ -1745,7 +1757,6 @@ rc_add sysctl boot
 rc_add hostname boot
 rc_add bootmisc boot
 rc_add syslog boot
-rc_add networking boot
 
 rc_add ntpd default
 rc_add cloudi default

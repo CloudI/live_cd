@@ -11,7 +11,6 @@ TAG="v3.11"
 #TAG="edge"
 
 URL="http://dl-cdn.alpinelinux.org/alpine/${TAG}"
-#URL="http://nl.alpinelinux.org/alpine/${TAG}"
 
 sh ~/aports/scripts/mkimage.sh --outdir ~/iso --repository "${URL}/main" --extra-repository "${URL}/community" --tag "${TAG}" --arch "${ARCH}" --profile "${PROFILE}"
 
