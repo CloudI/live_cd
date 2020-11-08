@@ -7,8 +7,8 @@ if [ -z "$ARCH" -o -z "$PROFILE" ]; then
     exit 1
 fi
 
-TAG="v3.11"
-#TAG="edge"
+#TAG="v3.12"
+TAG="edge"
 
 URL="http://dl-cdn.alpinelinux.org/alpine/${TAG}"
 
