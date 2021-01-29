@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+CLOUDI_RELEASE=2.0.1
+
 HOSTNAME="$1"
 if [ -z "$HOSTNAME" ]; then
 	echo "usage: $0 hostname"
@@ -27,6 +29,18 @@ rc_add() {
 tmp="$(mktemp -d)"
 trap cleanup EXIT
 
+mkdir -p "$tmp"/root
+cp ~/cloudi-$CLOUDI_RELEASE.tar.gz "$tmp"/root/
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+chown root:root "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
+chmod 0644 "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
+makefile root:root 0644 "$tmp"/root/SHA256SUM <<EOF
+1079728d47b325cdc21b48aa27ad361cbc94f5090d947f365a709bb5a5a30fff  cloudi-2.0.1.tar.bz2
+f57db737aa8658a4670cf657828bc08cefe0da723b8fbe21791da7b5f0953998  cloudi-2.0.1.tar.gz
+EOF
+
 mkdir -p "$tmp"/etc
 makefile root:root 0644 "$tmp"/etc/hostname <<EOF
 $HOSTNAME
@@ -53,12 +67,11 @@ ruby
 EOF
 
 makefile root:root 0644 "$tmp"/etc/motd <<EOF
-CloudI 2.0.0 LiveCD!
+CloudI $CLOUDI_RELEASE LiveCD!
 
     To run the integration tests use:
         service cloudi stop
         cp /etc/cloudi/cloudi_tests.conf /etc/cloudi/cloudi.conf
-        cp /etc/cloudi/cloudi_tests.args /etc/cloudi/cloudi.args
         service cloudi start
 
     To avoid extra RAM consumption the programming language packages
@@ -415,17 +428,6 @@ net.core.somaxconn = 65535
 EOF
 
 mkdir -p "$tmp"/etc/cloudi/
-makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.args <<EOF
-# Erlang/OTP arguments specific to node cloudi
-
-# Integration Tests code paths for the default configuration
--pz /usr/lib/cloudi-2.0.0/tests/count/erlang/ebin/
--pz /usr/lib/cloudi-2.0.0/tests/hexpi/erlang/ebin/
--pz /usr/lib/cloudi-2.0.0/tests/http_req/erlang/ebin/
--pz /usr/lib/cloudi-2.0.0/tests/msg_size/erlang/ebin/
--pz /usr/lib/cloudi-2.0.0/tests/messaging/erlang/ebin/
--pz /usr/lib/cloudi-2.0.0/tests/null/erlang/ebin/
-EOF
 makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
 %-*-Mode:erlang;coding:utf-8;tab-width:4;c-basic-offset:4;indent-tabs-mode:()-*-
 % ex: set ft=erlang fenc=utf-8 sts=4 ts=4 sw=4 et nomod:
@@ -538,12 +540,12 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    % prefix specified for all subscriptions
     %    "/tests/",
     %    % executable file path
-    %    "/usr/lib/cloudi-2.0.0/tests/hexpi/hexpi_cxx",
+    %    "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/hexpi/hexpi_cxx",
     %    % command line arguments for the executable
     %    "",
     %    % {Key, Value} pairs to specify environment variables
-    %    [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"},
-    %     {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"}],
+    %    [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"},
+    %     {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"}],
     %    % destination refresh controls how quickly service membership propogates
     %    % Any process that sends to long-lived processes can use
     %    % a 'lazy' prefix destination refresh (otherwise, if sending to
@@ -627,7 +629,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %     %{cgroup,
     %     % [{name, "cloudi/integration_tests/hexpi"},
     %     %  {parameters,
-    %     %   [{"memory.limit_in_bytes", "64m"}]}]}
+    %     %   [{"memory.limit_in_bytes", "64m"}]}]} % cgroup v1
+    %     %   [{"memory.high", "64m"}]}]}           % cgroup v2
     %    ]},
     % (using the proplist method of specifying the configuration data...
     %  it provides defaults automatically)
@@ -635,7 +638,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
      {prefix, "/cloudi/"},
      {module, cloudi_service_filesystem},
      {args,
-      [{directory, "/usr/lib/cloudi-2.0.0/service_api/dashboard/"}]},
+      [{directory, "/usr/lib/cloudi-$CLOUDI_RELEASE/service_api/dashboard/"}]},
      {dest_refresh, none},
      {count_process, 4}],
     [{prefix, "/cloudi/log/"},
@@ -645,6 +648,24 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
        {read, [{"/cloudi/log/cloudi.log", -16384}]},
        {refresh, 10}]},
      {dest_refresh, none}],
+    [{prefix, "/shell"},
+     {module, cloudi_service_shell},
+     {dest_refresh, none},
+     {count_process, 4}],
+    [{module, cloudi_service_funnel},
+     {args, [{name, "funnel"}]},
+     {count_process, 4}],
+    [{module, cloudi_service_cron},
+     {args,
+      [{expressions,
+        [{"0 */1 * * * * *",
+          [{send_args,
+            ["/funnel/shell", default,
+             "echo \"Hello World! The time is \"`date`\".\"",
+             undefined, undefined]},
+           {send_mcast, true},
+           {send_args_info, true}]}]}]},
+     {count_process, 4}],
     [{prefix, "*"},
      {module, cloudi_service_null},
      {args, [{debug, true}, {debug_contents, true}]},
@@ -655,7 +676,6 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
      {args, 
       [{port, 6464}, {output, external}, {use_websockets, true},
        {query_get_format, text_pairs},
-       {use_x_method_override, true},
        {websocket_connect_sync,
         "/tests/websockets/bounce/websocket/connect"},
        {websocket_disconnect_async,
@@ -673,7 +693,10 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
           [{parameters_selected, [2, 1]},
            {service_name,
             "**tification/websocket"}]}
-         ]}]},
+         ]},
+       {content_security_policy, "default-src 'self'"},
+       {set_x_content_type_options, true},
+       {set_x_xss_protection, true}]},
      {timeout_sync, 30000}],
     % tests/http/ services
     {internal,
@@ -681,7 +704,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         cloudi_service_http_cowboy1,
         [{port, 6466}, {output, external},
          {query_get_format, text_pairs},
-         {use_x_method_override, true}],
+         {content_security_policy, "default-src 'self'"},
+         {set_x_content_type_options, true},
+         {set_x_xss_protection, true}],
         immediate_closest,
         5000, 5000, 5000, [api], undefined, 1, 5, 300,
         []},
@@ -690,7 +715,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         cloudi_service_http_cowboy1,
         [{port, 6467}, {output, internal},
          {query_get_format, text_pairs},
-         {use_x_method_override, true}],
+         {content_security_policy, "default-src 'self'"},
+         {set_x_content_type_options, true},
+         {set_x_xss_protection, true}],
         immediate_closest, % quickstart testing, to avoid false negatives
         5000, 5000, 5000, undefined, undefined, 1, 5, 300,
         []},
@@ -699,7 +726,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         cloudi_service_http_elli,
         [{port, 6468}, {output, external},
          {query_get_format, text_pairs},
-         {use_x_method_override, true}],
+         {content_security_policy, "default-src 'self'"},
+         {set_x_content_type_options, true},
+         {set_x_xss_protection, true}],
         immediate_closest,
         5000, 5000, 5000, [api], undefined, 1, 5, 300,
         []},
@@ -712,7 +741,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
          {retry, 3},
          % a write ahead logging (WAL) file path for all requests
          % (n.b., for efficiency reasons all requests are also held in memory)
-         {file, "/usr/lib/cloudi-2.0.0/logs/example_queue_\${I}.log"},
+         {file, "/usr/lib/cloudi-$CLOUDI_RELEASE/logs/example_queue_\${I}.log"},
          {compression, 6},
          {checksum, crc32}],
         immediate_closest,
@@ -730,8 +759,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/http/http.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http/http.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
@@ -741,7 +770,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
     %    % enable assertions
     %    "-ea:org.cloudi... "
-    %    "-jar /usr/lib/cloudi-2.0.0/tests/http/java/http.jar",
+    %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/http/java/http.jar",
     %    [],
     %    none, default, default,
     %    20000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
@@ -749,32 +778,32 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http/",
         "/usr/bin/ruby",
-        "/usr/lib/cloudi-2.0.0/tests/http/http.rb",
-        [{"RUBYLIB", "/usr/lib/cloudi-2.0.0/api/ruby/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http/http.rb",
+        [{"RUBYLIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/ruby/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
         [{nice, 15}]},
     %[{prefix, "/tests/count/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/count/count_go"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count_go"},
     % {dest_refresh, none},
     % {count_thread, 4},
     % {env, [{"GOMAXPROCS", "4"}]},
     % {options, [{nice, 10}]}],
     %[{prefix, "/tests/count/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/count/count_haskell"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count_haskell"},
     % {dest_refresh, none},
     % {count_thread, 4},
     % {options, [{nice, 10}]}],
     %[{prefix, "/tests/count/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/count/count_ocaml"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count_ocaml"},
     % {dest_refresh, none},
     % {count_thread, 4},
     % {options, [{nice, 10}]}],
     {external,
         "/tests/count/",
-        "/usr/lib/cloudi-2.0.0/tests/count/count_c", "",
-        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"},
-         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count_c", "",
+        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"},
+         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 4, 1, 5, 300,
         [{nice, 10}]},
@@ -783,7 +812,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
     %    % enable assertions
     %    "-ea:org.cloudi... "
-    %    "-jar /usr/lib/cloudi-2.0.0/tests/count/java/count.jar",
+    %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/java/count.jar",
     %    [],
     %    none, default, default,
     %    20000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
@@ -791,24 +820,25 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/count/",
         "/usr/bin/node",
-        "/usr/lib/cloudi-2.0.0/tests/count/count.js",
-        [{"NODE_PATH", "/usr/lib/cloudi-2.0.0/api/javascript/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count.js",
+        [{"NODE_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/javascript/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 4, 1, 5, 300,
         [{nice, 10}]},
     {external,
         "/tests/count/",
         "/usr/bin/perl",
-        "/usr/lib/cloudi-2.0.0/tests/count/CountTask.pm",
-        [{"PERL5LIB", "/usr/lib/cloudi-2.0.0/api/perl/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/CountTask.pm",
+        [{"PERL5LIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/perl/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
         [{nice, 10}]},
     {external,
         "/tests/count/",
         "/usr/bin/php",
-        "-d include_path='/usr/lib/cloudi-2.0.0/api/php/' "
-        "-f /usr/lib/cloudi-2.0.0/tests/count/count.php",
+        "-d zend.assertions=1 "
+        "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
+        "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count.php",
         [],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 4, 1, 5, 300,
@@ -816,8 +846,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/count/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/count/count.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
@@ -825,8 +855,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/count/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/count/count_c.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count_c.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
@@ -834,50 +864,74 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/count/",
         "/usr/bin/ruby",
-        "/usr/lib/cloudi-2.0.0/tests/count/count.rb",
-        [{"RUBYLIB", "/usr/lib/cloudi-2.0.0/api/ruby/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/count.rb",
+        [{"RUBYLIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/ruby/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
         [{nice, 10}]},
     {internal,
         "/tests/count/",
         cloudi_service_test_count,
-        [],
-        none, 5000, 5000, 5000, undefined, undefined, 4, 5, 300,
+        [{mode, crdt}],
+        immediate_closest, 5000, 5000, 5000, undefined, undefined, 4, 5, 300,
         []},
     %[{prefix, "/tests/http_req/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/http_req/http_req_go"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req_go"},
     % {dest_refresh, none},
     % {options,
     %  [{request_timeout_adjustment, true},
     %   {nice, 10}]}],
     %[{prefix, "/tests/http_req/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/http_req/http_req_haskell"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req_haskell"},
     % {dest_refresh, none},
     % {options,
     %  [{request_timeout_adjustment, true},
     %   {nice, 10}]}],
     %[{prefix, "/tests/http_req/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/http_req/http_req_ocaml"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req_ocaml"},
     % {dest_refresh, none},
     % {options,
     %  [{request_timeout_adjustment, true},
     %   {nice, 10}]}],
     {external,
         "/tests/http_req/",
-        "/usr/lib/cloudi-2.0.0/tests/http_req/http_req_c", "",
-        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"},
-         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req_c", "",
+        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"},
+         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{request_timeout_adjustment, true},
+         %% OpenBSD 6.8
+         %{syscall_lock,
+         % [{type, pledge},
+         %  {names,
+         %   [% C/C++ CloudI API use
+         %    "stdio",
+         %    % dynamically linked library loading
+         %    "rpath"
+         %    ]}]},
+         %% Ubuntu 20.04 Linux (5.4.0 kernel, glibc 2.31)
+         %{syscall_lock,
+         % [{type, function},
+         %  {names,
+         %   [% C/C++ CloudI API use
+         %    "execve","clock_gettime","poll","read","write","close","exit",
+         %    "brk","mmap","munmap", % (malloc/free)
+         %    % Linux-specific
+         %    "exit_group",
+         %    % dynamically linked library loading
+         %    "arch_prctl","mprotect",
+         %    "access","openat","stat","fstat","pread64"
+         %    % static linking requires
+         %    %"arch_prctl","mprotect","uname","readlink"
+         %    ]}]},
          {nice, 10}]},
     %{external,
     %    "/tests/http_req/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
     %    % enable assertions
     %    "-ea:org.cloudi... "
-    %    "-jar /usr/lib/cloudi-2.0.0/tests/http_req/java/http_req.jar",
+    %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/java/http_req.jar",
     %    [],
     %    none, default, default,
     %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -886,8 +940,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http_req/",
         "/usr/bin/node",
-        "/usr/lib/cloudi-2.0.0/tests/http_req/http_req.js",
-        [{"NODE_PATH", "/usr/lib/cloudi-2.0.0/api/javascript/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req.js",
+        [{"NODE_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/javascript/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{request_timeout_adjustment, true},
@@ -895,8 +949,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http_req/",
         "/usr/bin/perl",
-        "/usr/lib/cloudi-2.0.0/tests/http_req/http_req.pl",
-        [{"PERL5LIB", "/usr/lib/cloudi-2.0.0/api/perl/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req.pl",
+        [{"PERL5LIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/perl/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{request_timeout_adjustment, true},
@@ -904,8 +958,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http_req/",
         "/usr/bin/php",
-        "-d include_path='/usr/lib/cloudi-2.0.0/api/php/' "
-        "-f /usr/lib/cloudi-2.0.0/tests/http_req/http_req.php",
+        "-d zend.assertions=1 "
+        "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
+        "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req.php",
         [],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -914,8 +969,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http_req/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/http_req/http_req.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -924,8 +979,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http_req/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/http_req/http_req_c.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req_c.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined,
@@ -940,8 +995,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/http_req/",
         "/usr/bin/ruby",
-        "/usr/lib/cloudi-2.0.0/tests/http_req/http_req.rb",
-        [{"RUBYLIB", "/usr/lib/cloudi-2.0.0/api/ruby/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/http_req.rb",
+        [{"RUBYLIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/ruby/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{request_timeout_adjustment, true},
@@ -979,46 +1034,46 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
            {count_max, 2.0},
            {count_min, 0.25}]}]},
     %[{prefix, "/tests/null/response/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/null/null_go"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_go"},
     % {dest_refresh, none},
     % {options,
     %  [{response_timeout_immediate_max, limit_min},
     %   {nice, 10}]}],
     %[{prefix, "/tests/null/timeout/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/null/null_go"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_go"},
     % {dest_refresh, none},
     % {options,
     %  [{response_timeout_immediate_max, limit_max},
     %   {nice, 10}]}],
     %[{prefix, "/tests/null/response/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/null/null_haskell"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_haskell"},
     % {dest_refresh, none},
     % {options,
     %  [{response_timeout_immediate_max, limit_min},
     %   {nice, 10}]}],
     %[{prefix, "/tests/null/timeout/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/null/null_haskell"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_haskell"},
     % {dest_refresh, none},
     % {options,
     %  [{response_timeout_immediate_max, limit_max},
     %   {nice, 10}]}],
     %[{prefix, "/tests/null/response/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/null/null_ocaml"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_ocaml"},
     % {dest_refresh, none},
     % {options,
     %  [{response_timeout_immediate_max, limit_min},
     %   {nice, 10}]}],
     %[{prefix, "/tests/null/timeout/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/null/null_ocaml"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_ocaml"},
     % {dest_refresh, none},
     % {options,
     %  [{response_timeout_immediate_max, limit_max},
     %   {nice, 10}]}],
     {external,
         "/tests/null/response/",
-        "/usr/lib/cloudi-2.0.0/tests/null/null_c", "",
-        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"},
-         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_c", "",
+        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"},
+         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_min},
@@ -1028,7 +1083,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
     %    % enable assertions
     %    "-ea:org.cloudi... "
-    %    "-jar /usr/lib/cloudi-2.0.0/tests/null/java/null_.jar",
+    %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/java/null_.jar",
     %    [],
     %    none, default, default,
     %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1037,8 +1092,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/response/",
         "/usr/bin/node",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.js",
-        [{"NODE_PATH", "/usr/lib/cloudi-2.0.0/api/javascript/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.js",
+        [{"NODE_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/javascript/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_min},
@@ -1046,8 +1101,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/response/",
         "/usr/bin/perl",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.pl",
-        [{"PERL5LIB", "/usr/lib/cloudi-2.0.0/api/perl/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.pl",
+        [{"PERL5LIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/perl/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_min},
@@ -1055,8 +1110,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/response/",
         "/usr/bin/php",
-        "-d include_path='/usr/lib/cloudi-2.0.0/api/php/' "
-        "-f /usr/lib/cloudi-2.0.0/tests/null/null.php",
+        "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
+        "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.php",
         [],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1065,8 +1120,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/response/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1075,8 +1130,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/response/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/null/null_c.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_c.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1085,8 +1140,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/response/",
         "/usr/bin/ruby",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.rb",
-        [{"RUBYLIB", "/usr/lib/cloudi-2.0.0/api/ruby/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.rb",
+        [{"RUBYLIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/ruby/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_min},
@@ -1099,9 +1154,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{response_timeout_immediate_max, limit_min}]},
     {external,
         "/tests/null/timeout/",
-        "/usr/lib/cloudi-2.0.0/tests/null/null_c", "",
-        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"},
-         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_c", "",
+        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"},
+         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_max},
@@ -1111,7 +1166,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
     %    % enable assertions
     %    "-ea:org.cloudi... "
-    %    "-jar /usr/lib/cloudi-2.0.0/tests/null/java/null_.jar",
+    %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/java/null_.jar",
     %    [],
     %    none, default, default,
     %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1120,8 +1175,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/timeout/",
         "/usr/bin/node",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.js",
-        [{"NODE_PATH", "/usr/lib/cloudi-2.0.0/api/javascript/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.js",
+        [{"NODE_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/javascript/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_max},
@@ -1129,8 +1184,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/timeout/",
         "/usr/bin/perl",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.pl",
-        [{"PERL5LIB", "/usr/lib/cloudi-2.0.0/api/perl/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.pl",
+        [{"PERL5LIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/perl/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_max},
@@ -1138,8 +1193,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/timeout/",
         "/usr/bin/php",
-        "-d include_path='/usr/lib/cloudi-2.0.0/api/php/' "
-        "-f /usr/lib/cloudi-2.0.0/tests/null/null.php",
+        "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
+        "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.php",
         [],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1148,8 +1203,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/timeout/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1158,8 +1213,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/timeout/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/null/null_c.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null_c.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1168,8 +1223,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/timeout/",
         "/usr/bin/ruby",
-        "/usr/lib/cloudi-2.0.0/tests/null/null.rb",
-        [{"RUBYLIB", "/usr/lib/cloudi-2.0.0/api/ruby/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.rb",
+        [{"RUBYLIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/ruby/"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{response_timeout_immediate_max, limit_max},
@@ -1221,8 +1276,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/echo/echo.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/echo/echo.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1231,8 +1286,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/coin/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/echo/echo.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/echo/echo.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
@@ -1242,7 +1297,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{internal,
     %    "/tests/http_req/",
     %    cloudi_service_filesystem,
-    %    [{directory, "/usr/lib/cloudi-2.0.0/tests/http_req/public_html/"},
+    %    [{directory, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/public_html/"},
     %     {write_append, ["/tests/http_req/hexpi.txt"]},
     %     {refresh, 5}, % seconds
     %     {cache, 300}, % seconds
@@ -1273,27 +1328,27 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/websockets/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/websockets/websockets.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/websockets/websockets.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         immediate_local, default, default,
         5000, 5000, 5000, [api], undefined, 1, 4, 5, 300,
         [{nice, 15}]},
     % msg_size tests can not use the udp protocol with the default buffer size
     %[{prefix, "/tests/msg_size/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size_go"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_go"},
     % {options,
     %  [{request_timeout_adjustment, true},
     %   {scope, cloudi_service_test_msg_size},
     %   {nice, 15}]}],
     %[{prefix, "/tests/msg_size/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size_haskell"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_haskell"},
     % {options,
     %  [{request_timeout_adjustment, true},
     %   {scope, cloudi_service_test_msg_size},
     %   {nice, 15}]}],
     %[{prefix, "/tests/msg_size/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size_ocaml"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_ocaml"},
     % {options,
     %  [{request_timeout_adjustment, true},
     %   {scope, cloudi_service_test_msg_size},
@@ -1305,6 +1360,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    immediate_closest,
     %    5000, 5000, 5000, [api], undefined, 2, 5, 300,
     %    [{request_timeout_adjustment, true},
+    %     {automatic_loading, false},
     %     {duo_mode, true},
     %     {aspects_request_before,
     %      [{cloudi_service_test_msg_size, aspect_request}]},
@@ -1314,10 +1370,10 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %     {scope, cloudi_service_test_msg_size}]},
     %{external,
     %    "/tests/msg_size/",
-    %    "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size_cxx",
+    %    "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_cxx",
     %    "",
-    %    [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"},
-    %     {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"}],
+    %    [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"},
+    %     {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"}],
     %    immediate_closest, default, default,
     %    5000, 5000, 5000, [api], undefined, 2, 1, 5, 300,
     %    [{request_timeout_adjustment, true},
@@ -1334,7 +1390,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
     %    % enable assertions
     %    "-ea:org.cloudi... "
-    %    "-jar /usr/lib/cloudi-2.0.0/tests/msg_size/java/msg_size.jar",
+    %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/java/msg_size.jar",
     %    [],
     %    immediate_closest, default, default,
     %    20000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
@@ -1350,8 +1406,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/msg_size/",
     %    "/usr/bin/node",
-    %    "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size.js",
-    %    [{"NODE_PATH", "/usr/lib/cloudi-2.0.0/api/javascript/"}],
+    %    "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size.js",
+    %    [{"NODE_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/javascript/"}],
     %    immediate_closest, default, default,
     %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
     %    [{request_timeout_adjustment, true},
@@ -1366,8 +1422,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/msg_size/",
     %    "/usr/bin/perl",
-    %    "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size.pl",
-    %    [{"PERL5LIB", "/usr/lib/cloudi-2.0.0/api/perl/"}],
+    %    "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size.pl",
+    %    [{"PERL5LIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/perl/"}],
     %    immediate_closest, default, default,
     %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
     %    [{request_timeout_adjustment, true},
@@ -1382,8 +1438,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/msg_size/",
     %    "/usr/bin/php",
-    %    "-d include_path='/usr/lib/cloudi-2.0.0/api/php/' "
-    %    "-f /usr/lib/cloudi-2.0.0/tests/msg_size/msg_size.php",
+    %    "-d zend.assertions=1 "
+    %    "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
+    %    "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size.php",
     %    [],
     %    immediate_closest, default, default,
     %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
@@ -1399,8 +1456,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/msg_size/",
     %    "/usr/bin/python3",
-    %    "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size.py",
-    %    [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+    %    "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size.py",
+    %    [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
     %     {"LANG", "en_US.UTF-8"}],
     %    immediate_closest, default, default,
     %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
@@ -1416,8 +1473,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/msg_size/",
     %    "/usr/bin/python3",
-    %    "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size_c.py",
-    %    [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+    %    "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_c.py",
+    %    [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
     %     {"LANG", "en_US.UTF-8"}],
     %    immediate_closest, default, default,
     %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
@@ -1433,8 +1490,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/msg_size/",
     %    "/usr/bin/ruby",
-    %    "/usr/lib/cloudi-2.0.0/tests/msg_size/msg_size.rb",
-    %    [{"RUBYLIB", "/usr/lib/cloudi-2.0.0/api/ruby/"}],
+    %    "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size.rb",
+    %    [{"RUBYLIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/ruby/"}],
     %    immediate_closest, default, default,
     %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
     %    [{request_timeout_adjustment, true},
@@ -1447,7 +1504,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %     {scope, cloudi_service_test_msg_size},
     %     {nice, 15}]},
     %[{prefix, "/tests/messaging/go/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/messaging/messaging_go"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging_go"},
     % {dest_refresh, immediate_local},
     % {timeout_async, 10000},
     % {timeout_sync, 10000},
@@ -1457,7 +1514,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %  [{scope, cloudi_service_test_messaging_go},
     %   {nice, 15}]}],
     %[{prefix, "/tests/messaging/haskell/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/messaging/messaging_haskell"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging_haskell"},
     % {dest_refresh, immediate_local},
     % {timeout_async, 10000},
     % {timeout_sync, 10000},
@@ -1466,7 +1523,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %  [{scope, cloudi_service_test_messaging_haskell},
     %   {nice, 15}]}],
     %[{prefix, "/tests/messaging/ocaml/"},
-    % {file_path, "/usr/lib/cloudi-2.0.0/tests/messaging/messaging_ocaml"},
+    % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging_ocaml"},
     % {dest_refresh, immediate_local},
     % {timeout_async, 10000},
     % {timeout_sync, 10000},
@@ -1477,8 +1534,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/messaging/perl/",
         "/usr/bin/perl",
-        "/usr/lib/cloudi-2.0.0/tests/messaging/MessagingTask.pm",
-        [{"PERL5LIB", "/usr/lib/cloudi-2.0.0/api/perl/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/MessagingTask.pm",
+        [{"PERL5LIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/perl/"}],
         immediate_local, default, default,
         5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
         [{dispatcher_pid_options, [{priority, low}]},
@@ -1487,8 +1544,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/messaging/javascript/",
         "/usr/bin/node",
-        "/usr/lib/cloudi-2.0.0/tests/messaging/messaging.js",
-        [{"NODE_PATH", "/usr/lib/cloudi-2.0.0/api/javascript/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging.js",
+        [{"NODE_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/javascript/"}],
         immediate_local, default, default,
         5000, 10000, 10000, [api], undefined, 4, 1, 5, 300,
         [{restart_all, true},
@@ -1498,8 +1555,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/messaging/php/",
         "/usr/bin/php",
-        "-d include_path='/usr/lib/cloudi-2.0.0/api/php/' "
-        "-f /usr/lib/cloudi-2.0.0/tests/messaging/messaging.php",
+        "-d zend.assertions=1 "
+        "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
+        "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging.php",
         [],
         immediate_local, default, default,
         5000, 10000, 10000, [api], undefined, 4, 1, 5, 300,
@@ -1510,8 +1568,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/messaging/python/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/messaging/messaging.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         immediate_local, default, default,
         5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
@@ -1521,8 +1579,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/messaging/python_c/",
         "/usr/bin/python3",
-        "/usr/lib/cloudi-2.0.0/tests/messaging/messaging_c.py",
-        [{"PYTHONPATH", "/usr/lib/cloudi-2.0.0/api/python/"},
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging_c.py",
+        [{"PYTHONPATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/python/"},
          {"LANG", "en_US.UTF-8"}],
         immediate_local, default, default,
         5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
@@ -1532,8 +1590,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/messaging/ruby/",
         "/usr/bin/ruby",
-        "/usr/lib/cloudi-2.0.0/tests/messaging/messaging.rb",
-        [{"RUBYLIB", "/usr/lib/cloudi-2.0.0/api/ruby/"}],
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging.rb",
+        [{"RUBYLIB", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/ruby/"}],
         immediate_local, default, default,
         5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
         [{dispatcher_pid_options, [{priority, low}]},
@@ -1541,10 +1599,10 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
          {scope, cloudi_service_test_messaging_ruby}]},
     {external,
         "/tests/messaging/cxx/",
-        "/usr/lib/cloudi-2.0.0/tests/messaging/messaging_cxx",
+        "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging_cxx",
         "",
-        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"},
-         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-2.0.0/api/c/"}],
+        [{"LD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"},
+         {"DYLD_LIBRARY_PATH", "/usr/lib/cloudi-$CLOUDI_RELEASE/api/c/"}],
         immediate_local, default, default,
         5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
         [{dispatcher_pid_options, [{priority, low}]},
@@ -1557,12 +1615,16 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-Xbatch -server -Xmx1G -Xms1G "
     %    % enable assertions
     %    "-ea:org.cloudi... "
-    %    "-jar /usr/lib/cloudi-2.0.0/tests/messaging/java/messaging.jar",
+    %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/java/messaging.jar",
     %    [],
     %    immediate_local, default, default,
     %    20000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
     %    [{dispatcher_pid_options, [{priority, low}]},
     %     {nice, 15},
+    %     %{cgroup,
+    %     % [{name, "cloudi/integration_tests/messaging_java"},
+    %     %  {parameters,
+    %     %   [{"memory.max", "4m"}]}]}, % cgroup v2
     %     {scope, cloudi_service_test_messaging_java}]},
     {internal,
         "/tests/messaging/erlang/variation0/",
@@ -1641,6 +1703,26 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{redirect, undefined}
     {log_time_offset, info}
 ]}.
+{code, [
+    % internal service source code configuration
+    % (should only be used when absolutely necessary, i.e.,
+    %  typically an internal service with automatic_loading == true
+    %  will handle starting an application or loading the service module)
+    {paths,
+     ["/usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/erlang/ebin/",
+      "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/hexpi/erlang/ebin/",
+      "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/erlang/ebin/",
+      "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/erlang/ebin/",
+      "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/erlang/ebin/",
+      "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/erlang/ebin/"]},
+    {modules,
+     [cloudi_service_test_msg_size]}
+    %{applications,
+    % [cloudi_x_msgpack]},
+    %{releases,
+    % ["/full/path/to/release1/name1.boot",
+    %  "/full/path/to/release2/name2.script"]}
+]}.
 EOF
 
 rc_add devfs sysinit
@@ -1663,5 +1745,5 @@ rc_add mount-ro shutdown
 rc_add killprocs shutdown
 rc_add savecache shutdown
 
-tar -c -C "$tmp" etc | gzip -9n > $HOSTNAME.apkovl.tar.gz
+tar -c -C "$tmp" etc root | gzip -9n > $HOSTNAME.apkovl.tar.gz
 
