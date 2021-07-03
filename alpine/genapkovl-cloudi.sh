@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-CLOUDI_RELEASE=2.0.1
+CLOUDI_RELEASE=2.0.2
 
 HOSTNAME="$1"
 if [ -z "$HOSTNAME" ]; then
@@ -37,8 +37,8 @@ fi
 chown root:root "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 chmod 0644 "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 makefile root:root 0644 "$tmp"/root/SHA256SUM <<EOF
-1079728d47b325cdc21b48aa27ad361cbc94f5090d947f365a709bb5a5a30fff  cloudi-2.0.1.tar.bz2
-f57db737aa8658a4670cf657828bc08cefe0da723b8fbe21791da7b5f0953998  cloudi-2.0.1.tar.gz
+8e6a45231ddd9de62ae5ccf21925f666b0e3efe4dcdd1772569b537d80e13fa7  cloudi-2.0.2.tar.bz2
+452c86bc0d0b0476e97049176eded905b01bd0ff49f76cd3e937ce33699b2225  cloudi-2.0.2.tar.gz
 EOF
 
 mkdir -p "$tmp"/etc
@@ -110,7 +110,7 @@ makefile root:root 0644 "$tmp"/etc/rc.conf <<EOF
 #rc_interactive="YES"
 
 # If we need to drop to a shell, you can specify it here.
-# If not specified we use $SHELL, otherwise the one specified in /etc/passwd,
+# If not specified we use \$SHELL, otherwise the one specified in /etc/passwd,
 # otherwise /bin/sh
 # Linux users could specify /sbin/sulogin
 #rc_shell=/bin/sh
@@ -646,7 +646,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
      {args,
       [{directory, "/var/log/cloudi/"},
        {read, [{"/cloudi/log/cloudi.log", -16384}]},
-       {refresh, 10}]},
+       {files_size, 16},
+       {refresh, 10},
+       {debug, false}]},
      {dest_refresh, none}],
     [{prefix, "/shell"},
      {module, cloudi_service_shell},
@@ -672,7 +674,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
      {dest_refresh, none},
      {options, [{response_timeout_immediate_max, limit_min}]}],
     [{prefix, "/tests/websockets/"},
-     {module, cloudi_service_http_cowboy1},
+     {module, cloudi_service_http_cowboy},
      {args, 
       [{port, 6464}, {output, external}, {use_websockets, true},
        {query_get_format, text_pairs},
@@ -694,17 +696,29 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
            {service_name,
             "**tification/websocket"}]}
          ]},
-       {content_security_policy, "default-src 'self'"},
+       {content_security_policy,
+        "default-src 'self'; "
+        "script-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+        "style-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+        "object-src 'none'; "
+        "worker-src 'none'; "
+        "connect-src 'self' ws:"},
        {set_x_content_type_options, true},
        {set_x_xss_protection, true}]},
      {timeout_sync, 30000}],
     % tests/http/ services
     {internal,
         "/tests/http/",
-        cloudi_service_http_cowboy1,
+        cloudi_service_http_cowboy,
         [{port, 6466}, {output, external},
          {query_get_format, text_pairs},
-         {content_security_policy, "default-src 'self'"},
+         {content_security_policy,
+          "default-src 'self'; "
+          "script-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+          "style-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+          "object-src 'none'; "
+          "worker-src 'none'; "
+          "connect-src 'self' ws:"},
          {set_x_content_type_options, true},
          {set_x_xss_protection, true}],
         immediate_closest,
@@ -712,10 +726,15 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         []},
     {internal,
         "/tests/http/",
-        cloudi_service_http_cowboy1,
+        cloudi_service_http_cowboy,
         [{port, 6467}, {output, internal},
          {query_get_format, text_pairs},
-         {content_security_policy, "default-src 'self'"},
+         {content_security_policy,
+          "default-src 'self'; "
+          "script-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+          "style-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+          "object-src 'none'; "
+          "worker-src 'none'"},
          {set_x_content_type_options, true},
          {set_x_xss_protection, true}],
         immediate_closest, % quickstart testing, to avoid false negatives
@@ -726,7 +745,12 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         cloudi_service_http_elli,
         [{port, 6468}, {output, external},
          {query_get_format, text_pairs},
-         {content_security_policy, "default-src 'self'"},
+         {content_security_policy,
+          "default-src 'self'; "
+          "script-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+          "style-src 'unsafe-inline' 'unsafe-eval' 'self'; "
+          "object-src 'none'; "
+          "worker-src 'none'"},
          {set_x_content_type_options, true},
          {set_x_xss_protection, true}],
         immediate_closest,
@@ -768,6 +792,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/http/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "-Dfile.encoding=UTF-8 "
+    %    "-server "
     %    % enable assertions
     %    "-ea:org.cloudi... "
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/http/java/http.jar",
@@ -810,6 +836,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/count/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "-Dfile.encoding=UTF-8 "
+    %    "-server "
     %    % enable assertions
     %    "-ea:org.cloudi... "
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/java/count.jar",
@@ -929,6 +957,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/http_req/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "-Dfile.encoding=UTF-8 "
+    %    "-server "
     %    % enable assertions
     %    "-ea:org.cloudi... "
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/java/http_req.jar",
@@ -1081,6 +1111,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/null/response/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "-Dfile.encoding=UTF-8 "
+    %    "-server "
     %    % enable assertions
     %    "-ea:org.cloudi... "
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/java/null_.jar",
@@ -1164,6 +1196,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/null/timeout/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "-Dfile.encoding=UTF-8 "
+    %    "-server "
     %    % enable assertions
     %    "-ea:org.cloudi... "
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/java/null_.jar",
@@ -1299,8 +1333,10 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    cloudi_service_filesystem,
     %    [{directory, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/public_html/"},
     %     {write_append, ["/tests/http_req/hexpi.txt"]},
-    %     {refresh, 5}, % seconds
-    %     {cache, 300}, % seconds
+    %     {refresh, 10}, % seconds
+    %     {cache, refresh}, % 5 seconds
+    %     {files_size, 1024}, % KiB
+    %     {replace, lfuda_gdsf},
     %     {notify_one, [{"/tests/http_req/index.html/get", "/tests/echo/put"}]}
     %     ],
     %    immediate_closest,
@@ -1324,7 +1360,11 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %         {concurrency, 1.5}]},
     % {timeout_init, 20000},
     % {dest_list_deny, [api]},
-    % {options, [{request_timeout_adjustment, true}]}],
+    % {options, [{request_timeout_adjustment, true},
+    %            {aspects_suspend,
+    %             [{cloudi_service_map_reduce, aspect_suspend}]},
+    %            {aspects_resume,
+    %             [{cloudi_service_map_reduce, aspect_resume}]}]}],
     {external,
         "/tests/websockets/",
         "/usr/bin/python3",
@@ -1388,6 +1428,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/msg_size/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "-Dfile.encoding=UTF-8 "
+    %    "-server "
     %    % enable assertions
     %    "-ea:org.cloudi... "
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/java/msg_size.jar",
@@ -1611,6 +1653,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{external,
     %    "/tests/messaging/java/",
     %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "-Dfile.encoding=UTF-8 "
     %    % based on http://www.infoq.com/articles/benchmarking-jvm
     %    "-Xbatch -server -Xmx1G -Xms1G "
     %    % enable assertions
@@ -1635,7 +1678,6 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{restart_all, true},
          {hibernate, false},
          {duo_mode, false},
-         {request_pid_options, [{priority, high}]},
          {scope, cloudi_service_test_messaging_erlang_variation0}]},
     {internal,
         "/tests/messaging/erlang/variation1/",
@@ -1646,7 +1688,6 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{restart_all, true},
          {hibernate, false},
          {duo_mode, true},
-         {request_pid_options, [{priority, high}]},
          {scope, cloudi_service_test_messaging_erlang_variation1}]},
     {internal,
         "/tests/messaging/erlang/variation2/",
@@ -1657,7 +1698,6 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{restart_all, true},
          {hibernate, true},
          {duo_mode, false},
-         {request_pid_options, [{priority, high}]},
          {scope, cloudi_service_test_messaging_erlang_variation2}]},
     {internal,
         "/tests/messaging/erlang/variation3/",
@@ -1668,7 +1708,6 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{restart_all, true},
          {hibernate, true},
          {duo_mode, true},
-         {request_pid_options, [{priority, high}]},
          {scope, cloudi_service_test_messaging_erlang_variation3}]}
 ]}.
 % automatic node detection with a UDP multicast group

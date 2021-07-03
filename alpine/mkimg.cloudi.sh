@@ -12,12 +12,11 @@ profile_cloudi() {
 	apkovl="genapkovl-cloudi.sh"
 	apks="$apks cloudi"
 	# add programming languages supported on all architecturs
-	apks="$apks go nodejs openjdk8 perl php7 python3 ruby"
+	apks="$apks go nodejs ocaml openjdk8 perl php7 python3 ruby"
 	# add programming languages supported on some architectures
 	case "$ARCH" in
 	x86_64)
 		apks="$apks ghc cabal"
-		apks="$apks ocaml"
 		;;
 	x86)
 		;;
