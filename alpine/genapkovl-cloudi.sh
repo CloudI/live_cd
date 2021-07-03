@@ -77,9 +77,9 @@ CloudI $CLOUDI_RELEASE LiveCD!
     To avoid extra RAM consumption the programming language packages
     listed below are not installed by default:
         go             (Go support)
-        openjdk8       (Java support)
         ghc cabal      (Haskell support (x86_64 only))
-        ocaml          (OCaml suppoort (x86_64 only))
+        ocaml          (OCaml suppoort)
+        openjdk8       (Java support)
 
     The LiveCD filesystem only has enough space for one of the
     programming languages listed above, with the installation as:
