@@ -13,17 +13,6 @@ profile_cloudi() {
 	apks="$apks cloudi"
 	# add programming languages supported on all architecturs
 	apks="$apks go nodejs ocaml openjdk8 perl php8 python3 ruby"
-	# add programming languages supported on some architectures
-	case "$ARCH" in
-	x86_64)
-		apks="$apks ghc cabal"
-		;;
-	x86)
-		;;
-	*)
-		exit 1
-		;;
-	esac
 	# debug information
 	#kernel_cmdline="$kernel_cmdline debug"
 	#initfs_cmdline="$initfs_cmdline debug_init=yes" # output?
