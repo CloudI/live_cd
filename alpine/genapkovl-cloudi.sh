@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-CLOUDI_RELEASE=2.0.2
+CLOUDI_RELEASE=2.0.4
 
 HOSTNAME="$1"
 if [ -z "$HOSTNAME" ]; then
@@ -37,8 +37,8 @@ fi
 chown root:root "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 chmod 0644 "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 makefile root:root 0644 "$tmp"/root/SHA256SUM <<EOF
-8e6a45231ddd9de62ae5ccf21925f666b0e3efe4dcdd1772569b537d80e13fa7  cloudi-2.0.2.tar.bz2
-452c86bc0d0b0476e97049176eded905b01bd0ff49f76cd3e937ce33699b2225  cloudi-2.0.2.tar.gz
+42ab15f214bfcf96a849f659b3a5ba01f27824550c3ee69005ced3bc40e1b5c5  cloudi-2.0.4.tar.bz2
+836497e3a5e0b9869e60ae8841a1e62d4866e813a19968d8b4b7d592c8f5e551  cloudi-2.0.4.tar.gz
 EOF
 
 mkdir -p "$tmp"/etc
@@ -61,7 +61,7 @@ alpine-base
 cloudi
 nodejs
 perl
-php7
+php8
 python3
 ruby
 EOF
@@ -463,7 +463,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         % a 'lazy' prefix destination refresh (otherwise, if sending to
         % short-lived provesses, use an 'immediate' prefix destination refresh).
         % The 'lazy' prefix makes the service cache service name lookup data
-        % while the 'immediate' prefix uses a central local process to do 
+        % while the 'immediate' prefix uses a central local process to do
         % service name lookups.
         % A 'closest' suffix destination refresh always prefers local
         % processes rather than using remote processes
@@ -529,7 +529,14 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {internal,
         "/cloudi/api/",
         cloudi_service_api_batch,
-        [],
+        [{queues,
+          [{"start",
+            [[{module, cloudi_service_send},
+              {args,
+               [{sends,
+                 [{"/tests/echo/post", <<"0">>}]},
+                {debug, true}]},
+              {max_r, 0}]]}]}],
         none, 5000, 5000, 5000, undefined, undefined, 1, 5, 300,
         []},
 
@@ -551,7 +558,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    % a 'lazy' prefix destination refresh (otherwise, if sending to
     %    % short-lived provesses, use an 'immediate' prefix destination refresh).
     %    % The 'lazy' prefix makes the service cache service name lookup data
-    %    % while the 'immediate' prefix uses a central local process to do 
+    %    % while the 'immediate' prefix uses a central local process to do
     %    % service name lookups.
     %    % A 'closest' suffix destination refresh always prefers local
     %    % processes rather than using remote processes
@@ -675,7 +682,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
      {options, [{response_timeout_immediate_max, limit_min}]}],
     [{prefix, "/tests/websockets/"},
      {module, cloudi_service_http_cowboy},
-     {args, 
+     {args,
       [{port, 6464}, {output, external}, {use_websockets, true},
        {query_get_format, text_pairs},
        {websocket_connect_sync,
@@ -1337,8 +1344,10 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %     {cache, refresh}, % 5 seconds
     %     {files_size, 1024}, % KiB
     %     {replace, lfuda_gdsf},
-    %     {notify_one, [{"/tests/http_req/index.html/get", "/tests/echo/put"}]}
-    %     ],
+    %     {redirect,
+    %      [{"/tests/http_req/redirect/*", "/tests/http_req/*"}]},
+    %     {notify_one,
+    %      [{"/tests/http_req/index.html/get", "/tests/echo/put"}]}],
     %    immediate_closest,
     %    5000, 5000, 5000, undefined, undefined, 1, 5, 300, []},
     %{internal,
