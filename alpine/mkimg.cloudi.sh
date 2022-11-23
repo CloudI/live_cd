@@ -12,7 +12,7 @@ profile_cloudi() {
 	apkovl="genapkovl-cloudi.sh"
 	apks="$apks cloudi"
 	# add programming languages supported on all architecturs
-	apks="$apks go nodejs ocaml openjdk8 perl php8 python3 ruby"
+	apks="$apks go nodejs ocaml openjdk8 perl php python3 ruby"
 	# debug information
 	#kernel_cmdline="$kernel_cmdline debug"
 	#initfs_cmdline="$initfs_cmdline debug_init=yes" # output?

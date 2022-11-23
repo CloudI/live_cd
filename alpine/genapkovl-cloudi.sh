@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-CLOUDI_RELEASE=2.0.4
+CLOUDI_RELEASE=2.0.5
 
 HOSTNAME="$1"
 if [ -z "$HOSTNAME" ]; then
@@ -37,8 +37,8 @@ fi
 chown root:root "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 chmod 0644 "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 makefile root:root 0644 "$tmp"/root/SHA256SUM <<EOF
-42ab15f214bfcf96a849f659b3a5ba01f27824550c3ee69005ced3bc40e1b5c5  cloudi-2.0.4.tar.bz2
-836497e3a5e0b9869e60ae8841a1e62d4866e813a19968d8b4b7d592c8f5e551  cloudi-2.0.4.tar.gz
+b0e89db8db76e53539374d82dc1dda531856f8ddb4d745c0653639bf7d7d8663  cloudi-2.0.5.tar.bz2
+c0be0dd5c82e778891d16d632e129bf7151b3f644499ac7d1198679a9db24341  cloudi-2.0.5.tar.gz
 EOF
 
 mkdir -p "$tmp"/etc
@@ -61,7 +61,7 @@ alpine-base
 cloudi
 nodejs
 perl
-php8
+php
 python3
 ruby
 EOF
@@ -209,10 +209,12 @@ makefile root:root 0644 "$tmp"/etc/rc.conf <<EOF
 
 # Some daemons are started and stopped via start-stop-daemon.
 # We can set some things on a per service basis, like the nicelevel.
-#SSD_NICELEVEL="-19"
+#SSD_NICELEVEL="0"
 # Or the ionice level. The format is class[:data] , just like the
 # --ionice start-stop-daemon parameter.
-#SSD_IONICELEVEL="2:2"
+#SSD_IONICELEVEL="0:0"
+# Or the OOM score adjustment.
+#SSD_OOM_SCORE_ADJ="0"
 
 # Pass ulimit parameters
 # If you are using bash in POSIX mode for your shell, note that the
@@ -292,10 +294,9 @@ rc_tty_number=12
 # "unified" mounts cgroups version 2 on /sys/fs/cgroup
 #rc_cgroup_mode="hybrid"
 
-# This is a list of controllers which should be enabled for cgroups version 2.
-# If hybrid mode is being used, controllers listed here will not be
-# available for cgroups version 1.
-# This is a global setting.
+# This is a list of controllers which should be enabled for cgroups version 2
+# when hybrid mode is being used.
+# Controllers listed here will not be available for cgroups version 1.
 #rc_cgroup_controllers=""
 
 # This variable contains the cgroups version 2 settings for your services.
@@ -383,7 +384,9 @@ rc_tty_number=12
 # To perform this cleanup manually for a stopped service, you can
 # execute cgroup_cleanup with /etc/init.d/<service> cgroup_cleanup or
 # rc-service <service> cgroup_cleanup.
-# The process followed in this cleanup is the following:
+# If the kernel includes support for cgroup2's cgroup.kill, this is used
+# to reliably teardown the cgroup.
+# If this fails, the process followed in this cleanup is the following:
 # 1. send stopsig (sigterm if it isn't set) to all processes left in the
 # cgroup immediately followed by sigcont.
 # 2. Send sighup to all processes in the cgroup if rc_send_sighup is
@@ -406,6 +409,23 @@ rc_tty_number=12
 # If this is set to no, we do not send sigkill to all processes in the
 # cgroup.
 #rc_send_sigkill="YES"
+
+##############################################################################
+# SUPERVISE DAEMON CONFIGURATION VARIABLES
+# These variables sets more reasonable defaults for supervise-daemon(8).
+# They may be overriden on a per service basis.
+
+# Wait this number of seconds before restarting a daemon after it crashes.
+respawn_delay=2
+
+# Sets the maximum number of times a daemon will be respawned during a respawn
+# period. If a daemon dies more than this number of times during a respawn
+# period, supervise-daemon(8) will give up trying to respawn it and exit.
+# 0 means unlimited.
+respawn_max=5
+
+# Sets the length in seconds of a respawn period.
+respawn_period=1800
 EOF
 makefile root:root 0644 "$tmp"/etc/sysctl.conf <<EOF
 # Maximum TCP Receive Window
@@ -658,6 +678,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
      {dest_refresh, none}],
     [{prefix, "/shell"},
      {module, cloudi_service_shell},
+     {args,
+      [{timeout_kills_process, true},
+       {terminate_kills_process, true}]},
      {dest_refresh, none},
      {count_process, 4}],
     [{module, cloudi_service_funnel},
@@ -673,7 +696,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
              undefined, undefined]},
            {send_mcast, true},
            {send_args_info, true}]}]}]},
-     {count_process, 4}],
+     {count_process, 4},
+     {max_r, 0}],
     [{prefix, "*"},
      {module, cloudi_service_null},
      {args, [{debug, true}, {debug_contents, true}]},
@@ -769,6 +793,8 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
          % fails to receive a response within the timeout period
          % (e.g., the destination service crashes without providing a response)
          {retry, 3},
+         % each retry is delayed by 1 second
+         {retry_delay, {1, second}},
          % a write ahead logging (WAL) file path for all requests
          % (n.b., for efficiency reasons all requests are also held in memory)
          {file, "/usr/lib/cloudi-$CLOUDI_RELEASE/logs/example_queue_\${I}.log"},
@@ -1279,7 +1305,10 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         "/tests/",
         cloudi_service_router,
         [{destinations,
-          [{"http_req/any.xml/get",
+          [{"http_req/redirect/?/get",
+            [{parameters_selected, [1]},
+             {http_redirect, "http://127.0.0.1:6464/tests/http_req/*"}]},
+           {"http_req/any.xml/get",
             [{mode, round_robin},
              {service_names,
               ["http_req/c.xml/get",
@@ -1322,6 +1351,12 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         none, default, default,
         5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
         [{nice, 15}]},
+    [{module, cloudi_service_send},
+     {args,
+      [{async, true},
+       {sends,
+        [{"/tests/echo/post", <<"cloudi_service_send's async echo">>}]}]},
+     {max_r, 0}],
     % unstable 50% chance (coin toss) echo in python
     {external,
         "/tests/coin/",
@@ -1365,9 +1400,12 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     % {args, [{map_reduce, cloudi_service_test_hexpi}, % map-reduce module
     %         {map_reduce_args, [1, 65536]},  % index start, index end
     %         {name, "hexpi_control"}, % suspend/resume service name
+    %         {retry, 3}, % max_retries when timeout_max is being used
+    %         {retry_delay, {5, minutes}},
     %         {concurrency, 1.5}]},
     % {timeout_init, 20000},
     % {dest_list_deny, [api]},
+    % {max_r, 0},
     % {options, [{request_timeout_adjustment, true},
     %            {aspects_suspend,
     %             [{cloudi_service_map_reduce, aspect_suspend}]},
@@ -1408,7 +1446,6 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    immediate_closest,
     %    5000, 5000, 5000, [api], undefined, 2, 5, 300,
     %    [{request_timeout_adjustment, true},
-    %     {automatic_loading, false},
     %     {duo_mode, true},
     %     {aspects_request_before,
     %      [{cloudi_service_test_msg_size, aspect_request}]},
@@ -1716,7 +1753,14 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{restart_all, true},
          {hibernate, true},
          {duo_mode, true},
-         {scope, cloudi_service_test_messaging_erlang_variation3}]}
+         {scope, cloudi_service_test_messaging_erlang_variation3}]}%,
+    %[{prefix, "/health_check/"},
+    % {module, cloudi_service_health_check},
+    % {args,
+    %  [{hosts,
+    %    [{"cloudi.org",
+    %      [{interval, 5}, % seconds
+    %       {port, 80}]}]}]}]
 ]}.
 % automatic node detection with a UDP multicast group
 {nodes, automatic}.
@@ -1737,18 +1781,17 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{formatters,
     % [{any,
     %   [{formatter, cloudi_core_i_logger},
-    %    {formatter_config,
-    %     [{mode, legacy}]}]},
+    %    {formatter_config, []}]},
     %  {['STDOUT'],
     %   [{formatter, cloudi_core_i_logger},
-    %    {formatter_config,
-    %     [{mode, legacy_stdout}]}]},
+    %    {formatter_config, []}]},
     %  {['STDERR'],
     %   [{formatter, cloudi_core_i_logger},
-    %    {formatter_config,
-    %     [{mode, legacy_stderr}]}]}]},
+    %    {formatter_config, []}]}]},
     %{redirect, undefined}
-    {log_time_offset, info}
+    {log_time_offset, info},
+    % For slower logging disk writes
+    {file_sync, {5, seconds}}
 ]}.
 {code, [
     % internal service source code configuration

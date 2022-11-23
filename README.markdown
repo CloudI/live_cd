@@ -1,6 +1,13 @@
 [CloudI](https://cloudi.org) LiveCD Downloads
 =============================================
 
+* Alpine Linux 3.17.0 (kernel 5.15.79-0-lts) CloudI [2.0.5](https://osdn.net/dl/cloudi/cloudi-2.0.5.tar.gz)
+  * 3GB RAM required (consumes less than 938MB (1.4GB with integration tests) RAM during runtime (2048MB RAM consumed by the filesystem) with 1577MB filesystem storage available)
+    * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-3.17.0-x86_64-cloudi-2.0.5.iso)
+    (SHA256 ``)
+    * [x86 (32bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-3.17.0-x86-cloudi-2.0.5.iso)
+    (SHA256 ``)
+
 * Alpine Linux 3.16.1 (kernel 5.15.58-0-lts) CloudI [2.0.4](https://osdn.net/dl/cloudi/cloudi-2.0.4.tar.gz)
   * 3GB RAM required (consumes less than 938MB (1.4GB with integration tests) RAM during runtime (2048MB RAM consumed by the filesystem) with 1577MB filesystem storage available)
     * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-3.16.1-x86_64-cloudi-2.0.4.iso)
