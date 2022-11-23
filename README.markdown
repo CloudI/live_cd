@@ -2,11 +2,11 @@
 =============================================
 
 * Alpine Linux 3.17.0 (kernel 5.15.79-0-lts) CloudI [2.0.5](https://osdn.net/dl/cloudi/cloudi-2.0.5.tar.gz)
-  * 3GB RAM required (consumes less than 938MB (1.4GB with integration tests) RAM during runtime (2048MB RAM consumed by the filesystem) with 1577MB filesystem storage available)
+  * 3GB RAM required (consumes less than 1.1GB (1.5GB with integration tests) RAM during runtime (2GB RAM consumed by the filesystem) with 1577MB filesystem storage available)
     * [x86_64 (64bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-3.17.0-x86_64-cloudi-2.0.5.iso)
-    (SHA256 ``)
+    (SHA256 `460cd1b1cc6ecc7eaa72877ca2be36be1808c929fcdc6cd81d0371c9b0a3c419`)
     * [x86 (32bit Intel/AMD)](https://osdn.net/dl/cloudi/alpine-3.17.0-x86-cloudi-2.0.5.iso)
-    (SHA256 ``)
+    (SHA256 `78ddba68186532a9e8a254fe00aae1794de307f044c047c545a0269aeb256bb8`)
 
 * Alpine Linux 3.16.1 (kernel 5.15.58-0-lts) CloudI [2.0.4](https://osdn.net/dl/cloudi/cloudi-2.0.4.tar.gz)
   * 3GB RAM required (consumes less than 938MB (1.4GB with integration tests) RAM during runtime (2048MB RAM consumed by the filesystem) with 1577MB filesystem storage available)
