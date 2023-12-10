@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-CLOUDI_RELEASE=2.0.5
+CLOUDI_RELEASE=2.0.7
 
 HOSTNAME="$1"
 if [ -z "$HOSTNAME" ]; then
@@ -37,8 +37,8 @@ fi
 chown root:root "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 chmod 0644 "$tmp"/root/cloudi-$CLOUDI_RELEASE.tar.gz
 makefile root:root 0644 "$tmp"/root/SHA256SUM <<EOF
-b0e89db8db76e53539374d82dc1dda531856f8ddb4d745c0653639bf7d7d8663  cloudi-2.0.5.tar.bz2
-c0be0dd5c82e778891d16d632e129bf7151b3f644499ac7d1198679a9db24341  cloudi-2.0.5.tar.gz
+fdf89924018d50eddb385b14e7b3fd676c8d9a4ba58189f907e2d6e2d685e183  cloudi-2.0.7.tar.bz2
+959469c6d18ba9e3ca2625300757bd9b4ccd58475749608fa77ec3d7aef4e77f  cloudi-2.0.7.tar.gz
 EOF
 
 mkdir -p "$tmp"/etc
@@ -66,7 +66,30 @@ python3
 ruby
 EOF
 
-makefile root:root 0644 "$tmp"/etc/motd <<EOF
+case "$(uname -m)" in
+x86_64)
+    makefile root:root 0644 "$tmp"/etc/motd <<EOF
+CloudI $CLOUDI_RELEASE LiveCD!
+
+    To run the integration tests use:
+        service cloudi stop
+        cp /etc/cloudi/cloudi_tests.conf /etc/cloudi/cloudi.conf
+        service cloudi start
+
+    To avoid extra RAM consumption the programming language packages
+    listed below are not installed by default:
+        go             (Go support)
+        openjdk17-jre  (Java support)
+        ocaml          (OCaml suppoort)
+
+    The LiveCD filesystem only has enough space for one of the
+    programming languages listed above, with the installation as:
+        apk add openjdk17-jre
+
+EOF
+    ;;
+i?86)
+    makefile root:root 0644 "$tmp"/etc/motd <<EOF
 CloudI $CLOUDI_RELEASE LiveCD!
 
     To run the integration tests use:
@@ -78,13 +101,18 @@ CloudI $CLOUDI_RELEASE LiveCD!
     listed below are not installed by default:
         go             (Go support)
         ocaml          (OCaml suppoort)
-        openjdk8       (Java support)
 
     The LiveCD filesystem only has enough space for one of the
     programming languages listed above, with the installation as:
-        apk add openjdk8
+        apk add go
 
 EOF
+    ;;
+*)
+    exit 1
+    ;;
+esac
+
 
 mkdir -p "$tmp"/etc/conf.d/
 makefile root:root 0644 "$tmp"/etc/conf.d/ntpd <<EOF
@@ -181,8 +209,8 @@ makefile root:root 0644 "$tmp"/etc/rc.conf <<EOF
 # MISC CONFIGURATION VARIABLES
 # There variables are shared between many init scripts
 
-# Set unicode to YES to turn on unicode support for keyboards and screens.
-#unicode="NO"
+# Set unicode to NO to turn off unicode support for keyboards and screens.
+#unicode="YES"
 
 # This is how long fuser should wait for a remote server to respond. The
 # default is 60 seconds, but  it can be adjusted here.
@@ -190,8 +218,8 @@ makefile root:root 0644 "$tmp"/etc/rc.conf <<EOF
 
 # Below is the default list of network fstypes.
 #
-# afs ceph cifs coda davfs fuse fuse.sshfs gfs glusterfs lustre ncpfs
-# nfs nfs4 ocfs2 shfs smbfs
+# afs ceph cifs coda davfs fuse fuse.glusterfs fuse.sshfs gfs glusterfs lustre
+# ncpfs nfs nfs4 ocfs2 shfs smbfs
 #
 # If you would like to add to this list, you can do so by adding your
 # own fstypes to the following variable.
@@ -209,19 +237,19 @@ makefile root:root 0644 "$tmp"/etc/rc.conf <<EOF
 
 # Some daemons are started and stopped via start-stop-daemon.
 # We can set some things on a per service basis, like the nicelevel.
-#SSD_NICELEVEL="0"
+# These need to be exported
+#export SSD_NICELEVEL="0"
 # Or the ionice level. The format is class[:data] , just like the
 # --ionice start-stop-daemon parameter.
-#SSD_IONICELEVEL="0:0"
+#export SSD_IONICELEVEL="0:0"
 # Or the OOM score adjustment.
-#SSD_OOM_SCORE_ADJ="0"
+#export SSD_OOM_SCORE_ADJ="0"
 
 # Pass ulimit parameters
 # If you are using bash in POSIX mode for your shell, note that the
 # ulimit command uses a block size of 512 bytes for the -c and -f
 # options
 rc_ulimit="-n 65535 -c unlimited"
-#rc_ulimit="-u 30"
 
 # It's possible to define extra dependencies for services like so
 #rc_config="/etc/foo"
@@ -292,7 +320,7 @@ rc_tty_number=12
 # cgroups version 1 on /sys/fs/cgroup.
 # "legacy" mounts cgroups version 1 on /sys/fs/cgroup
 # "unified" mounts cgroups version 2 on /sys/fs/cgroup
-#rc_cgroup_mode="hybrid"
+#rc_cgroup_mode="unified"
 
 # This is a list of controllers which should be enabled for cgroups version 2
 # when hybrid mode is being used.
@@ -653,7 +681,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    [{request_timeout_adjustment, true},
     %     {nice, 15}%,
     %     %{cgroup,
-    %     % [{name, "cloudi/integration_tests/hexpi"},
+    %     % [{name, "CloudI/integration_tests/hexpi"},
     %     %  {parameters,
     %     %   [{"memory.limit_in_bytes", "64m"}]}]} % cgroup v1
     %     %   [{"memory.high", "64m"}]}]}           % cgroup v2
@@ -747,8 +775,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
           "script-src 'unsafe-inline' 'unsafe-eval' 'self'; "
           "style-src 'unsafe-inline' 'unsafe-eval' 'self'; "
           "object-src 'none'; "
-          "worker-src 'none'; "
-          "connect-src 'self' ws:"},
+          "worker-src 'none'"},
          {set_x_content_type_options, true},
          {set_x_xss_protection, true}],
         immediate_closest,
@@ -823,7 +850,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{nice, 15}]},
     %{external,
     %    "/tests/http/",
-    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "/usr/bin/java",
     %    "-Dfile.encoding=UTF-8 "
     %    "-server "
     %    % enable assertions
@@ -831,7 +858,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/http/java/http.jar",
     %    [],
     %    none, default, default,
-    %    20000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
+    %    5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
     %    [{nice, 15}]},
     {external,
         "/tests/http/",
@@ -867,7 +894,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{nice, 10}]},
     %{external,
     %    "/tests/count/",
-    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "/usr/bin/java",
     %    "-Dfile.encoding=UTF-8 "
     %    "-server "
     %    % enable assertions
@@ -875,7 +902,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/count/java/count.jar",
     %    [],
     %    none, default, default,
-    %    20000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
+    %    5000, 5000, 5000, undefined, undefined, 1, 4, 5, 300,
     %    [{nice, 10}]},
     {external,
         "/tests/count/",
@@ -988,7 +1015,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
          {nice, 10}]},
     %{external,
     %    "/tests/http_req/",
-    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "/usr/bin/java",
     %    "-Dfile.encoding=UTF-8 "
     %    "-server "
     %    % enable assertions
@@ -996,7 +1023,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/http_req/java/http_req.jar",
     %    [],
     %    none, default, default,
-    %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
+    %    5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
     %    [{request_timeout_adjustment, true},
     %     {nice, 10}]},
     {external,
@@ -1142,7 +1169,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
          {nice, 10}]},
     %{external,
     %    "/tests/null/response/",
-    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "/usr/bin/java",
     %    "-Dfile.encoding=UTF-8 "
     %    "-server "
     %    % enable assertions
@@ -1150,7 +1177,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/java/null_.jar",
     %    [],
     %    none, default, default,
-    %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
+    %    5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
     %    [{response_timeout_immediate_max, limit_min},
     %     {nice, 10}]},
     {external,
@@ -1174,6 +1201,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/response/",
         "/usr/bin/php",
+        "-d zend.assertions=1 "
         "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
         "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.php",
         [],
@@ -1227,7 +1255,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
          {nice, 10}]},
     %{external,
     %    "/tests/null/timeout/",
-    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "/usr/bin/java",
     %    "-Dfile.encoding=UTF-8 "
     %    "-server "
     %    % enable assertions
@@ -1235,7 +1263,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/java/null_.jar",
     %    [],
     %    none, default, default,
-    %    20000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
+    %    5000, 5000, 5000, undefined, undefined, 1, 1, 5, 300,
     %    [{response_timeout_immediate_max, limit_max},
     %     {nice, 10}]},
     {external,
@@ -1259,6 +1287,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     {external,
         "/tests/null/timeout/",
         "/usr/bin/php",
+        "-d zend.assertions=1 "
         "-d include_path='/usr/lib/cloudi-$CLOUDI_RELEASE/api/php/' "
         "-f /usr/lib/cloudi-$CLOUDI_RELEASE/tests/null/null.php",
         [],
@@ -1425,18 +1454,27 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_go"},
     % {options,
     %  [{request_timeout_adjustment, true},
+    %   {aspects_init_after, [{cloudi_service_test_msg_size, aspect_init}]},
+    %   {aspects_request_before, [{cloudi_service_test_msg_size, aspect_request}]},
+    %   {aspects_terminate_before, [{cloudi_service_test_msg_size, aspect_terminate}]},
     %   {scope, cloudi_service_test_msg_size},
     %   {nice, 15}]}],
     %[{prefix, "/tests/msg_size/"},
     % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_haskell"},
     % {options,
     %  [{request_timeout_adjustment, true},
+    %   {aspects_init_after, [{cloudi_service_test_msg_size, aspect_init}]},
+    %   {aspects_request_before, [{cloudi_service_test_msg_size, aspect_request}]},
+    %   {aspects_terminate_before, [{cloudi_service_test_msg_size, aspect_terminate}]},
     %   {scope, cloudi_service_test_msg_size},
     %   {nice, 15}]}],
     %[{prefix, "/tests/msg_size/"},
     % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/msg_size_ocaml"},
     % {options,
     %  [{request_timeout_adjustment, true},
+    %   {aspects_init_after, [{cloudi_service_test_msg_size, aspect_init}]},
+    %   {aspects_request_before, [{cloudi_service_test_msg_size, aspect_request}]},
+    %   {aspects_terminate_before, [{cloudi_service_test_msg_size, aspect_terminate}]},
     %   {scope, cloudi_service_test_msg_size},
     %   {nice, 15}]}],
     %{internal,
@@ -1472,7 +1510,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %     {nice, 15}]},
     %{external,
     %    "/tests/msg_size/",
-    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "/usr/bin/java",
     %    "-Dfile.encoding=UTF-8 "
     %    "-server "
     %    % enable assertions
@@ -1480,7 +1518,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/msg_size/java/msg_size.jar",
     %    [],
     %    immediate_closest, default, default,
-    %    20000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
+    %    5000, 5000, 5000, [api], undefined, 1, 1, 5, 300,
     %    [{request_timeout_adjustment, true},
     %     {aspects_init_after,
     %      [{cloudi_service_test_msg_size, aspect_init}]},
@@ -1598,8 +1636,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     % {count_thread, 4},
     % {env, [{"GOMAXPROCS", "4"}]},
     % {options,
-    %  [{scope, cloudi_service_test_messaging_go},
-    %   {nice, 15}]}],
+    %  [{dispatcher_pid_options, [{priority, low}]},
+    %   {nice, 15},
+    %   {scope, cloudi_service_test_messaging_go}]}],
     %[{prefix, "/tests/messaging/haskell/"},
     % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging_haskell"},
     % {dest_refresh, immediate_local},
@@ -1607,8 +1646,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     % {timeout_sync, 10000},
     % {count_thread, 4},
     % {options,
-    %  [{scope, cloudi_service_test_messaging_haskell},
-    %   {nice, 15}]}],
+    %  [{dispatcher_pid_options, [{priority, low}]},
+    %   {nice, 15},
+    %   {scope, cloudi_service_test_messaging_haskell}]}],
     %[{prefix, "/tests/messaging/ocaml/"},
     % {file_path, "/usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/messaging_ocaml"},
     % {dest_refresh, immediate_local},
@@ -1616,8 +1656,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     % {timeout_sync, 10000},
     % {count_thread, 4},
     % {options,
-    %  [{scope, cloudi_service_test_messaging_ocaml},
-    %   {nice, 15}]}],
+    %  [{dispatcher_pid_options, [{priority, low}]},
+    %   {nice, 15},
+    %   {scope, cloudi_service_test_messaging_ocaml}]}],
     {external,
         "/tests/messaging/perl/",
         "/usr/bin/perl",
@@ -1697,7 +1738,7 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
          {scope, cloudi_service_test_messaging_cxx}]},
     %{external,
     %    "/tests/messaging/java/",
-    %    "/usr/lib/jvm/java-1.8-openjdk/bin/java",
+    %    "/usr/bin/java",
     %    "-Dfile.encoding=UTF-8 "
     %    % based on http://www.infoq.com/articles/benchmarking-jvm
     %    "-Xbatch -server -Xmx1G -Xms1G "
@@ -1706,11 +1747,11 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %    "-jar /usr/lib/cloudi-$CLOUDI_RELEASE/tests/messaging/java/messaging.jar",
     %    [],
     %    immediate_local, default, default,
-    %    20000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
+    %    5000, 10000, 10000, [api], undefined, 1, 4, 5, 300,
     %    [{dispatcher_pid_options, [{priority, low}]},
     %     {nice, 15},
     %     %{cgroup,
-    %     % [{name, "cloudi/integration_tests/messaging_java"},
+    %     % [{name, "CloudI/integration_tests/messaging_java"},
     %     %  {parameters,
     %     %   [{"memory.max", "4m"}]}]}, % cgroup v2
     %     {scope, cloudi_service_test_messaging_java}]},
@@ -1753,14 +1794,32 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
         [{restart_all, true},
          {hibernate, true},
          {duo_mode, true},
-         {scope, cloudi_service_test_messaging_erlang_variation3}]}%,
+         {scope, cloudi_service_test_messaging_erlang_variation3}]},
     %[{prefix, "/health_check/"},
     % {module, cloudi_service_health_check},
     % {args,
-    %  [{hosts,
+    %  [{error_level, info},
+    %   {hosts,
     %    [{"cloudi.org",
     %      [{interval, 5}, % seconds
-    %       {port, 80}]}]}]}]
+    %       {port, 80},
+    %       {tcp_test,
+    %        {{cloudi_service_health_check, tcp_test_http,
+    %          [get, "/", 200]}}}]},
+    %     {"www.google.com",
+    %      [{interval, 5}, % seconds
+    %       {port, 80},
+    %       {tcp_test,
+    %        {{cloudi_service_health_check, tcp_test_http,
+    %          [get, "/", 200]}}}]}
+    %       ]}]},
+    % {count_process, 2},
+    % {options,
+    %  [{info_pid_uses, 1},
+    %   {hibernate, true},
+    %   {restart_all, true}]}],
+    [{module, cloudi_service_validate_config},
+     {max_r, 0}]
 ]}.
 % automatic node detection with a UDP multicast group
 {nodes, automatic}.
@@ -1791,7 +1850,9 @@ makefile root:root 0600 "$tmp"/etc/cloudi/cloudi_tests.conf <<EOF
     %{redirect, undefined}
     {log_time_offset, info},
     % For slower logging disk writes
-    {file_sync, {5, seconds}}
+    {file_sync, {5, seconds}},
+    % Stop integration tests if fatal or error log output occurs
+    {aspects_log_after, [{cloudi_logger, aspect_stop_on_error}]}
 ]}.
 {code, [
     % internal service source code configuration

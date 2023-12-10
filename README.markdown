@@ -1,6 +1,13 @@
 [CloudI](https://cloudi.org) LiveCD Downloads
 =============================================
 
+* Alpine Linux 3.19.0 (kernel 6.6.5-0-lts) CloudI [2.0.7](https://cloudi.org/download/cloudi-2.0.7.tar.gz)
+  * 3GB RAM required (consumes less than 1.2GB (1.5GB with integration tests) RAM during runtime (2GB RAM consumed by the filesystem) with 1.4GB filesystem storage available)
+    * [x86_64 (64bit Intel/AMD)](https://cloudi.org/download/live_cd/2.0.7/alpine-3.19.0-x86_64-cloudi-2.0.7.iso)
+    (SHA256 `feac656eac96256df6f67907e7ea066dc98f3965385ac3628db3ffa8b1e4a3e8`)
+    * [x86 (32bit Intel/AMD)](https://cloudi.org/download/live_cd/2.0.7/alpine-3.19.0-x86-cloudi-2.0.7.iso)
+    (SHA256 `6691ed089debdc181017e55f6a84d553273ec085b229ef4864cb8851b396429a`)
+
 * Alpine Linux 3.17.0 (kernel 5.15.79-0-lts) CloudI [2.0.5](https://cloudi.org/download/cloudi-2.0.5.tar.gz)
   * 3GB RAM required (consumes less than 1.1GB (1.5GB with integration tests) RAM during runtime (2GB RAM consumed by the filesystem) with 1577MB filesystem storage available)
     * [x86_64 (64bit Intel/AMD)](https://cloudi.org/download/live_cd/2.0.5/alpine-3.17.0-x86_64-cloudi-2.0.5.iso)
@@ -14,11 +21,4 @@
     (SHA256 `f9f6d7976338e5d90c8bec7b77dabae5a44873dfc02c14703f749cbc8ff6c286`)
     * [x86 (32bit Intel/AMD)](https://cloudi.org/download/live_cd/2.0.4/alpine-3.16.1-x86-cloudi-2.0.4.iso)
     (SHA256 `056268c666ecc1054444c20604f2fecf7cbae0223259d940cc0b821b9d1000a6`)
-
-* Alpine Linux 3.14.0 (kernel 5.10.43-0-lts) CloudI [2.0.2](https://cloudi.org/download/cloudi-2.0.2.tar.gz)
-  * 3GB RAM required (consumes less than 954MB (1.3GB with integration tests) RAM during runtime (2048MB RAM consumed by the filesystem) with 1559MB filesystem storage available)
-    * [x86_64 (64bit Intel/AMD)](https://cloudi.org/download/live_cd/2.0.2/alpine-3.14.0-x86_64-cloudi-2.0.2.iso)
-    (SHA256 `c3a2a00a4fdbd92edb47028bccf6d09e245a54e894f041d6bba047d4539d6893`)
-    * [x86 (32bit Intel/AMD)](https://cloudi.org/download/live_cd/2.0.2/alpine-3.14.0-x86-cloudi-2.0.2.iso)
-    (SHA256 `c79d18b9080b8d9ae481096415b4b83e4073f92167c0a890d0286fb1af650f5a`)
 

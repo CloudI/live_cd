@@ -7,10 +7,10 @@ if [ -z "$ARCH" -o -z "$PROFILE" ]; then
     exit 1
 fi
 
-TAG="v3.17"
+TAG="v3.19"
 #TAG="edge"
 
 URL="http://dl-cdn.alpinelinux.org/alpine/${TAG}"
 
-sh ~/aports/scripts/mkimage.sh --outdir ~/iso --repository "${URL}/main" --extra-repository "${URL}/community" --tag "${TAG}" --arch "${ARCH}" --profile "${PROFILE}"
+sh ~/aports/scripts/mkimage.sh --outdir ~/iso --repository "${URL}/main" --repository "${URL}/community" --tag "${TAG}" --arch "${ARCH}" --profile "${PROFILE}"
 
